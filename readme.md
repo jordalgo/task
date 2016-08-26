@@ -3,7 +3,7 @@
 A javascript data type for async requests. Very similar to the [data.task](https://github.com/folktale/data.task) and [fun-task](https://github.com/rpominov/fun-task) with some additional features.
 
 ## Example
-```
+```javascript
 const askMe = new Ask(message => {
   const id = setTimeout(() => {
     message(null, 1);
