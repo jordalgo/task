@@ -1,0 +1,18 @@
+{
+  "extends": "airbnb/legacy",
+  "rules": {
+    "new-cap": 0,
+    "func-names": 0,
+    "vars-on-top": 0,
+    "no-param-reassign": 0,
+    "no-use-before-define": ["error", { "functions": false }],
+    "space-before-function-paren": 0,
+    "no-console": 0,
+    "dot-notation": 0
+  },
+  "globals": {
+    "describe": true,
+    "it": true,
+    "xit": true
+  }
+}

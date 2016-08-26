@@ -1,0 +1,37 @@
+{
+  "name": "ask",
+  "version": "0.1.0",
+  "description": "A javascript monad for dealing with async tasks",
+  "main": "lib/index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "browserify": "^13.0.1",
+    "documentation": "^4.0.0-beta2",
+    "eslint": "^2.5.3",
+    "eslint-config-airbnb": "^6.2.0",
+    "mocha": "^2.2.1",
+    "sanctuary": "^0.10.0"
+  },
+  "scripts": {
+    "lint": "eslint test/ lib/",
+    "test": "mocha -R spec test/*.js",
+    "docs": "node generate-api.js",
+    "build": "browserify -s estream lib/index.js > estream.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jordalgo/ask.git"
+  },
+  "keywords": [
+    "functional",
+    "reactive",
+    "modular",
+    "library"
+  ],
+  "author": "Jordan Rome",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jordalgo/ask/issues"
+  },
+  "homepage": "https://github.com/jordalgo/ask"
+}
