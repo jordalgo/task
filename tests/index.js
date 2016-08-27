@@ -14,7 +14,7 @@ describe('Ask', function() {
     });
 
     assert.ok(!compCalled);
-    askMe.run((error, message) => {
+    askMe.run((left, message) => {
       assert.equal(message, 1);
       done();
     });
@@ -26,7 +26,7 @@ describe('Ask', function() {
       message(null, 1);
     });
 
-    askMe.run((error, message) => {
+    askMe.run((left, message) => {
       compCalled = true;
       assert.equal(message, 1);
     });
@@ -41,14 +41,14 @@ describe('Ask', function() {
       called++;
     });
 
-    askMe.run((error, message) => {
+    askMe.run((left, message) => {
       assert.equal(message, 1);
     });
 
     var secondCall = false;
 
     setTimeout(() => {
-      askMe.run((error, message) => {
+      askMe.run((left, message) => {
         secondCall = true;
         assert.equal(called, 1);
         assert.equal(message, 1);
@@ -71,7 +71,7 @@ describe('Ask', function() {
       }, 100);
     });
 
-    askMe.run((error, message) => {
+    askMe.run((left, message) => {
       assert.equal(message, 1);
     });
   });
@@ -86,7 +86,7 @@ describe('Ask', function() {
       return () => { clearTimeout(to); };
     });
 
-    var cancel = askMe.run((error, message) => {
+    var cancel = askMe.run((left, message) => {
       assert.fail('Run Observer should never have been called');
     });
 
@@ -105,22 +105,22 @@ describe('Ask', function() {
 
       askMe
       .map(x => x + 1)
-      .run((error, message) => {
+      .run((left, message) => {
         assert.equal(message, 2);
         done();
       });
     });
 
-    it('does not map error', (done) => {
+    it('does not map left', (done) => {
       var askMe = new Ask(message => {
         message('boom');
       });
 
       askMe
       .map(x => x + 1)
-      .run((error, message) => {
+      .run((left, message) => {
         assert.ok(!message);
-        assert.equal(error, 'boom');
+        assert.equal(left, 'boom');
         done();
       });
     });
@@ -134,12 +134,12 @@ describe('Ask', function() {
 
       var mappedAsk = askMe.map(x => x + 1);
 
-      mappedAsk.run((error, message) => {
+      mappedAsk.run((left, message) => {
         assert.equal(message, 2);
       });
 
       setTimeout(() => {
-        mappedAsk.run((error, message) => {
+        mappedAsk.run((left, message) => {
           assert.equal(called, 1);
           assert.equal(message, 2);
           done();
@@ -159,7 +159,7 @@ describe('Ask', function() {
 
       var mappedAsk = askMe.map(x => x + 1);
 
-      var cancel = mappedAsk.run((error, message) => {
+      var cancel = mappedAsk.run((left, message) => {
         assert.fail('Run Observer should never have been called');
       });
 
@@ -171,22 +171,89 @@ describe('Ask', function() {
     });
   });
 
+  describe('biChain', () => {
+    it('chains', (done) => {
+      var askMe = new Ask(message => {
+        message(null, 1);
+      });
+
+      function askAdd(left, right) {
+        return new Ask(message => {
+          message(left, (right) ? right + 5 : null);
+        });
+      }
+
+      askMe
+      .biChain(askAdd)
+      .run((left, message) => {
+        assert.equal(message, 6);
+        done();
+      });
+    });
+
+    it('calls the chaining ask on left', (done) => {
+      var askAddCalled;
+      var askMe = new Ask(message => {
+        message('boom');
+      });
+
+      function askAdd(left, right) {
+        askAddCalled = true;
+        return new Ask(message => {
+          message(left, (right) ? right + 5 : null);
+        });
+      }
+
+      askMe
+      .biChain(askAdd)
+      .run((left, right) => {
+        assert.equal(left, 'boom');
+        assert.ok(!right);
+        assert.ok(askAddCalled);
+        done();
+      });
+    });
+  });
+
   describe('chain', () => {
     it('chains', (done) => {
       var askMe = new Ask(message => {
         message(null, 1);
       });
 
-      function askAdd(error, success) {
+      function askAdd(right) {
         return new Ask(message => {
-          message(error, (success) ? success + 5 : null);
+          message(null, right + 5);
         });
       }
 
       askMe
       .chain(askAdd)
-      .run((error, message) => {
-        assert.equal(message, 6);
+      .run((left, right) => {
+        assert.equal(right, 6);
+        done();
+      });
+    });
+
+    it('does not call the chaining ask on left', (done) => {
+      var askAddCalled;
+      var askMe = new Ask(message => {
+        message('boom');
+      });
+
+      function askAdd(left, right) {
+        askAddCalled = false;
+        return new Ask(message => {
+          message(left, (right) ? right + 5 : null);
+        });
+      }
+
+      askMe
+      .biChain(askAdd)
+      .run((left, right) => {
+        assert.equal(left, 'boom');
+        assert.ok(!right);
+        assert.ok(!askAddCalled);
         done();
       });
     });
