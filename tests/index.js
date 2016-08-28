@@ -258,5 +258,26 @@ describe('Ask', function() {
       });
     });
   });
+
+  describe('ap', () => {
+    it('applies first right to passed asks right', (done) => {
+      var askMe = new Ask(message => {
+        setTimeout(() => {
+          message(null, x => x + 5);
+        }, 10);
+      });
+
+      var askYou = new Ask(message => {
+        message(null, 5);
+      });
+
+      askMe
+      .ap(askYou)
+      .run((left, right) => {
+        assert.equal(right, 10);
+        done();
+      });
+    });
+  });
 });
 
