@@ -2,10 +2,9 @@
 
 A javascript data type for async requests. Very similar to the [data.task](https://github.com/folktale/data.task) and [fun-task](https://github.com/rpominov/fun-task) with some modifications.
 
-Also see [AskOnce](#AskOnce).
-
 ## Example
 ```javascript
+import Ask from 'ask';
 const askMe = new Ask(message => {
   const id = setTimeout(() => {
     message(null, 1);
@@ -26,27 +25,57 @@ const cancel = askMe.run((left, right) => {
 - It's lazy! The function passed on Ask creation is only called when `run` is invoked.
 - There is no error catching in an Ask! Errors are not thrown or caught from within an Ask. There are failure values (called lefts) but these are not the same thing as errors -- think of them as 'bad news'.
 
-# AskOnce
+## Chaining
 
-Same as an Ask but the computation is only run once and the message values are memoized (similar to a Promise) so if you call run on an Ask more than once it will return the first value async.
+```javascript
+function getUser(id) {
+  return new Ask(message => {
+    // AJAX request to get a user
+    message(null, { user });
+  });
+}
 
-## Example
+function getFollowers(username) {
+  return new Ask(message => {
+    // AJAX request using username
+    message(null, [followers]);
+  });
+}
+
+getUser()
+.map(user => user.name)
+.chain(getFollowers)
+.run((left, right) => {
+  // right === [followers] (if all went well)
+});
+```
+
+## Memoization
+
+A promise-like feature that allows you to hang on to values already processed within an Ask. Computations don't get re-run.
+
 ```javascript
 var count = 0;
-const askMe = new AskOnce(message => {
-  // this only gets run once.
+const askMe = new Ask(message => {
   const id = setTimeout(() => {
     message(null, ++count);
   }, 1000);
+  return () => { clearTimeout(id); };
 });
 
-askMe.run((left, right) => {
-    // failure === null
-    // success === 1
-});
+const askMeOnce = askMe.memoize();
 
-askMe.run((left, right) => {
-  // left === null,
-  // right === 1
+askMeOnce.run((left, right) => {
+    // left === null
+    // right === 1
+    // count === 1
+});
+askMeOnce.run((left, right) => {
+    // left === null
+    // right === 1
+    // count === 1
 });
 ```
+
+## Credits
+A lot of code was inspired and stolen directly from [data.task](https://github.com/folktale/data.task) (Quildreen Motta) and [fun-task](https://github.com/rpominov/fun-task) (Roman Pominov).

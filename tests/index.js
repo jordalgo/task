@@ -1,14 +1,12 @@
 var assert = require('assert');
-var Ask = require('../lib').Ask;
-var AskOnce = require('../lib').AskOnce;
-
+var Ask = require('../lib');
 var add1 = function(x) { return x + 1; };
 
-function sharedTests(Asker) {
+describe('Ask', () => {
   describe('base', () => {
     it('only runs the computation when run is called', (done) => {
       var compCalled;
-      var askMe = new Asker(message => {
+      var askMe = new Ask(message => {
         setTimeout(() => {
           compCalled = true;
           message(null, 1);
@@ -236,29 +234,25 @@ function sharedTests(Asker) {
       });
     });
   });
-}
 
-describe('Ask', () => {
-  sharedTests(Ask);
-});
-
-describe('AskOnce', function() {
-  describe('base', () => {
+  describe('memoize', () => {
     it('run returns the original value and does not re-run computation', (done) => {
       var called = 0;
-      var askMe = new AskOnce(message => {
+      var askMe = new Ask(message => {
         message(null, 1);
         called++;
       });
 
-      askMe.run((left, message) => {
+      var askMeMemo = askMe.memoize();
+
+      askMeMemo.run((left, message) => {
         assert.equal(message, 1);
       });
 
       var secondCall = false;
 
       setTimeout(() => {
-        askMe.run((left, message) => {
+        askMeMemo.run((left, message) => {
           secondCall = true;
           assert.equal(called, 1);
           assert.equal(message, 1);
@@ -272,19 +266,21 @@ describe('AskOnce', function() {
     it('notifies each run observer if the computation has not completed', (done) => {
       var called = 0;
       var runCalled = 0;
-      var askMe = new AskOnce(message => {
+      var askMe = new Ask(message => {
         setTimeout(() => {
           message(null, 1);
         }, 100);
         called++;
       });
 
-      askMe.run((left, message) => {
+      var askMeMemo = askMe.memoize();
+
+      askMeMemo.run((left, message) => {
         assert.equal(message, 1);
         runCalled++;
       });
 
-      askMe.run((left, message) => {
+      askMeMemo.run((left, message) => {
         assert.equal(message, 1);
         assert.equal(runCalled, 1);
         assert.equal(called, 1);
@@ -292,31 +288,5 @@ describe('AskOnce', function() {
       });
     });
   });
-
-  describe('map', () => {
-    it('does not re-run the original computation', (done) => {
-      var called = 0;
-      var askMe = new AskOnce(message => {
-        message(null, 1);
-        called++;
-      });
-
-      var mappedAsk = askMe.map(x => x + 1);
-
-      mappedAsk.run((left, message) => {
-        assert.equal(message, 2);
-      });
-
-      setTimeout(() => {
-        mappedAsk.run((left, message) => {
-          assert.equal(called, 1);
-          assert.equal(message, 2);
-          done();
-        });
-      }, 100);
-    });
-  });
-
-  sharedTests(AskOnce);
 });
 
