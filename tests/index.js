@@ -1,100 +1,79 @@
 var assert = require('assert');
-var Ask = require('../lib');
+var Ask = require('../lib').Ask;
+var AskOnce = require('../lib').AskOnce;
 
 var add1 = function(x) { return x + 1; };
 
-describe('Ask', function() {
-  it('only runs the computation when run is called', (done) => {
-    var compCalled;
-    var askMe = new Ask(message => {
-      setTimeout(() => {
-        compCalled = true;
-        message(null, 1);
-      }, 100);
-    });
+function sharedTests(Asker) {
+  describe('base', () => {
+    it('only runs the computation when run is called', (done) => {
+      var compCalled;
+      var askMe = new Asker(message => {
+        setTimeout(() => {
+          compCalled = true;
+          message(null, 1);
+        }, 100);
+      });
 
-    assert.ok(!compCalled);
-    askMe.run((left, message) => {
-      assert.equal(message, 1);
-      done();
-    });
-  });
-
-  it('always executes the observer async', (done) => {
-    var compCalled;
-    var askMe = new Ask(message => {
-      message(null, 1);
-    });
-
-    askMe.run((left, message) => {
-      compCalled = true;
-      assert.equal(message, 1);
-    });
-    assert.ok(!compCalled);
-    setTimeout(done, 100);
-  });
-
-  it('run returns the original value and does not re-run computation', (done) => {
-    var called = 0;
-    var askMe = new Ask(message => {
-      message(null, 1);
-      called++;
-    });
-
-    askMe.run((left, message) => {
-      assert.equal(message, 1);
-    });
-
-    var secondCall = false;
-
-    setTimeout(() => {
+      assert.ok(!compCalled);
       askMe.run((left, message) => {
-        secondCall = true;
-        assert.equal(called, 1);
         assert.equal(message, 1);
         done();
       });
-      // make sure the second run is also always async
-      assert.ok(!secondCall);
-    }, 100);
-  });
+    });
 
-  it('throws if the computation tries to complete twice', (done) => {
-    var askMe = new Ask(message => {
-      message(null, 1);
+    it('always executes the observer async', (done) => {
+      var compCalled;
+      var askMe = new Ask(message => {
+        message(null, 1);
+      });
+
+      askMe.run((left, message) => {
+        compCalled = true;
+        assert.equal(message, 1);
+      });
+      assert.ok(!compCalled);
+      setTimeout(done, 100);
+    });
+
+    it('throws if the computation tries to complete twice', (done) => {
+      var askMe = new Ask(message => {
+        message(null, 1);
+        setTimeout(() => {
+          try {
+            message('boom');
+          } catch (e) {
+            done();
+          }
+        }, 100);
+      });
+
+      askMe.run((left, message) => {
+        assert.equal(message, 1);
+      });
+    });
+
+    it('run returns a cancellation function', (done) => {
+      var compCalled;
+      var askMe = new Ask(message => {
+        var to = setTimeout(() => {
+          compCalled = true;
+          message(null, 1);
+        }, 500);
+        return () => { clearTimeout(to); };
+      });
+
+      var cancel = askMe.run((left, message) => {
+        assert.fail('Run Observer should never have been called');
+      });
+
+      cancel();
       setTimeout(() => {
-        try {
-          message('boom');
-        } catch (e) {
-          done();
-        }
+        assert.ok(!compCalled);
+        done();
       }, 100);
     });
 
-    askMe.run((left, message) => {
-      assert.equal(message, 1);
-    });
-  });
-
-  it('run returns a cancellation function', (done) => {
-    var compCalled;
-    var askMe = new Ask(message => {
-      var to = setTimeout(() => {
-        compCalled = true;
-        message(null, 1);
-      }, 1000);
-      return () => { clearTimeout(to); };
-    });
-
-    var cancel = askMe.run((left, message) => {
-      assert.fail('Run Observer should never have been called');
-    });
-
-    cancel();
-    setTimeout(() => {
-      assert.ok(!compCalled);
-      done();
-    }, 1500);
   });
 
   describe('map', () => {
@@ -104,7 +83,7 @@ describe('Ask', function() {
       });
 
       askMe
-      .map(x => x + 1)
+      .map(add1)
       .run((left, message) => {
         assert.equal(message, 2);
         done();
@@ -117,34 +96,12 @@ describe('Ask', function() {
       });
 
       askMe
-      .map(x => x + 1)
+      .map(add1)
       .run((left, message) => {
         assert.ok(!message);
         assert.equal(left, 'boom');
         done();
       });
-    });
-
-    it('does not re-run the original computation', (done) => {
-      var called = 0;
-      var askMe = new Ask(message => {
-        message(null, 1);
-        called++;
-      });
-
-      var mappedAsk = askMe.map(x => x + 1);
-
-      mappedAsk.run((left, message) => {
-        assert.equal(message, 2);
-      });
-
-      setTimeout(() => {
-        mappedAsk.run((left, message) => {
-          assert.equal(called, 1);
-          assert.equal(message, 2);
-          done();
-        });
-      }, 100);
     });
 
     it('run returns the original cancel', (done) => {
@@ -157,7 +114,7 @@ describe('Ask', function() {
         return () => { clearTimeout(to); };
       });
 
-      var mappedAsk = askMe.map(x => x + 1);
+      var mappedAsk = askMe.map(add1);
 
       var cancel = mappedAsk.run((left, message) => {
         assert.fail('Run Observer should never have been called');
@@ -167,7 +124,7 @@ describe('Ask', function() {
       setTimeout(() => {
         assert.ok(!compCalled);
         done();
-      }, 500);
+      }, 150);
     });
   });
 
@@ -263,7 +220,7 @@ describe('Ask', function() {
     it('applies first right to passed asks right', (done) => {
       var askMe = new Ask(message => {
         setTimeout(() => {
-          message(null, x => x + 5);
+          message(null, add1);
         }, 10);
       });
 
@@ -274,10 +231,69 @@ describe('Ask', function() {
       askMe
       .ap(askYou)
       .run((left, right) => {
-        assert.equal(right, 10);
+        assert.equal(right, 6);
         done();
       });
     });
   });
+}
+
+describe('Ask', () => {
+  sharedTests(Ask);
+});
+
+describe('AskOnce', function() {
+  describe('base', () => {
+    it('run returns the original value and does not re-run computation', (done) => {
+      var called = 0;
+      var askMe = new AskOnce(message => {
+        message(null, 1);
+        called++;
+      });
+
+      askMe.run((left, message) => {
+        assert.equal(message, 1);
+      });
+
+      var secondCall = false;
+
+      setTimeout(() => {
+        askMe.run((left, message) => {
+          secondCall = true;
+          assert.equal(called, 1);
+          assert.equal(message, 1);
+          done();
+        });
+        // make sure the second run is also always async
+        assert.ok(!secondCall);
+      }, 100);
+    });
+  });
+
+  describe('map', () => {
+    it('does not re-run the original computation', (done) => {
+      var called = 0;
+      var askMe = new AskOnce(message => {
+        message(null, 1);
+        called++;
+      });
+
+      var mappedAsk = askMe.map(x => x + 1);
+
+      mappedAsk.run((left, message) => {
+        assert.equal(message, 2);
+      });
+
+      setTimeout(() => {
+        mappedAsk.run((left, message) => {
+          assert.equal(called, 1);
+          assert.equal(message, 2);
+          done();
+        });
+      }, 100);
+    });
+  });
+
+  sharedTests(AskOnce);
 });
 
