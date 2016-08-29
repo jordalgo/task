@@ -268,6 +268,29 @@ describe('AskOnce', function() {
         assert.ok(!secondCall);
       }, 100);
     });
+
+    it('notifies each run observer if the computation has not completed', (done) => {
+      var called = 0;
+      var runCalled = 0;
+      var askMe = new AskOnce(message => {
+        setTimeout(() => {
+          message(null, 1);
+        }, 100);
+        called++;
+      });
+
+      askMe.run((left, message) => {
+        assert.equal(message, 1);
+        runCalled++;
+      });
+
+      askMe.run((left, message) => {
+        assert.equal(message, 1);
+        assert.equal(runCalled, 1);
+        assert.equal(called, 1);
+        done();
+      });
+    });
   });
 
   describe('map', () => {
