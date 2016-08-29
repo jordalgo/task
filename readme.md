@@ -2,7 +2,7 @@
 
 A javascript data type for async requests. Very similar to the [data.task](https://github.com/folktale/data.task) and [fun-task](https://github.com/rpominov/fun-task) with some modifications.
 
-Also see [AskOnce](#ask-once).
+Also see [AskOnce](#AskOnce).
 
 ## Example
 ```javascript
@@ -28,7 +28,7 @@ const cancel = askMe.run((left, right) => {
 
 # AskOnce
 
-Same as an Ask but with the computation is only run once and the message values are memoized (similar to a Promise) so if you call run on an Ask more than once it will return the first value async.
+Same as an Ask but the computation is only run once and the message values are memoized (similar to a Promise) so if you call run on an Ask more than once it will return the first value async.
 
 ## Example
 ```javascript
