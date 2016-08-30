@@ -288,5 +288,119 @@ describe('Ask', () => {
       });
     });
   });
+
+  describe('all', () => {
+    it('does not notify until all Asks are completed', (done) => {
+      var count = 0;
+      function createAsk(to) {
+        var order = ++count;
+        return new Ask(message => {
+          setTimeout(() => {
+            message(null, order);
+          }, to);
+        });
+      }
+
+      Ask.all([
+        createAsk(100),
+        createAsk(500),
+        createAsk(0)
+      ]).run((left, right) => {
+        assert.equal(count, 3);
+        assert.deepEqual(right, [3, 1, 2]);
+        done();
+      });
+    });
+
+    it('sends the first left and cancels other asks if a left occurs', (done) => {
+      function createAsk(to, left) {
+        return new Ask(message => {
+          var id = setTimeout(() => {
+            if (!left) {
+              assert.fail('Should have been canceled');
+            } else {
+              message(left);
+            }
+          }, to);
+          return () => {
+            clearTimeout(id);
+          };
+        });
+      }
+
+      Ask.all([
+        createAsk(100),
+        createAsk(500),
+        createAsk(0, 'boom')
+      ]).run((left, right) => {
+        assert.equal(left, 'boom');
+        assert.deepEqual(right, []);
+        done();
+      });
+    });
+
+    it('wont throw even if proper cancel functions not returned', (done) => {
+      function createAsk(to, left) {
+        return new Ask(message => {
+          var id = setTimeout(() => {
+            if (!left) {
+              message(null, 'uh oh');
+            } else {
+              message(left);
+            }
+          }, to);
+        });
+      }
+
+      var callCount = 0;
+
+      Ask.all([
+        createAsk(100, 'boom'),
+        createAsk(500),
+        createAsk(0)
+      ]).run((left, right) => {
+        callCount++;
+        assert.equal(left, 'boom');
+        assert.deepEqual(right, ['uh oh']);
+      });
+
+      setTimeout(() => {
+        assert.equal(callCount, 1);
+        done();
+      }, 600);
+    });
+
+    it('it returns the un-finishes array of rights if a left occurs', (done) => {
+      var count = 0;
+      function createAsk(to, left) {
+        var order = ++count;
+        return new Ask(message => {
+          var id = setTimeout(() => {
+            if (!left) {
+              message(null, order);
+            } else {
+              message(left);
+            }
+          }, to);
+          return () => {
+            clearTimeout(id);
+          };
+        });
+      }
+
+      var callCount = 0;
+
+      Ask.all([
+        createAsk(100, 'boom'),
+        createAsk(500),
+        createAsk(0)
+      ]).run((left, right) => {
+        callCount++;
+        assert.equal(left, 'boom');
+        assert.deepEqual(right, [3]);
+        done();
+      });
+    });
+  });
 });
 
