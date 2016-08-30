@@ -102,7 +102,7 @@ Ask.all([
   createAsk(0)
 ]).run((left, right) => {
   // count === 3
-  // right === [3, 2, 1]
+  // right === [3, 1, 2]
 });
 ```
 
