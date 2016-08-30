@@ -284,6 +284,25 @@ describe('Ask', () => {
         done();
       });
     });
+
+    it('is exposed as a static function', (done) => {
+      const askMe = new Ask(message => {
+        setTimeout(() => {
+          message(null, add1);
+        }, 10);
+      });
+
+      const askYou = new Ask(message => {
+        message(null, 5);
+      });
+
+      Ask
+      .ap(askYou, askMe)
+      .run((left, right) => {
+        assert.equal(right, 6);
+        done();
+      });
+    });
   });
 
   describe('memoize', () => {
@@ -337,6 +356,33 @@ describe('Ask', () => {
         assert.equal(called, 1);
         done();
       });
+    });
+
+    it('is exposed as a static function', (done) => {
+      let called = 0;
+      const askMe = new Ask(message => {
+        message(null, 1);
+        called++;
+      });
+
+      const askMeMemo = Ask.memoize(askMe);
+
+      askMeMemo.run((left, message) => {
+        assert.equal(message, 1);
+      });
+
+      let secondCall = false;
+
+      setTimeout(() => {
+        askMeMemo.run((left, message) => {
+          secondCall = true;
+          assert.equal(called, 1);
+          assert.equal(message, 1);
+          done();
+        });
+        // make sure the second run is also always async
+        assert.ok(!secondCall);
+      }, 100);
     });
   });
 
