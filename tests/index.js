@@ -1,12 +1,13 @@
-var assert = require('assert');
-var Ask = require('../lib');
-var add1 = function(x) { return x + 1; };
+const assert = require('assert');
+const Ask = require('../lib');
+
+const add1 = function(x) { return x + 1; };
 
 describe('Ask', () => {
   describe('base', () => {
     it('only runs the computation when run is called', (done) => {
-      var compCalled;
-      var askMe = new Ask(message => {
+      let compCalled;
+      const askMe = new Ask(message => {
         setTimeout(() => {
           compCalled = true;
           message(null, 1);
@@ -21,8 +22,8 @@ describe('Ask', () => {
     });
 
     it('always executes the observer async', (done) => {
-      var compCalled;
-      var askMe = new Ask(message => {
+      let compCalled;
+      const askMe = new Ask(message => {
         message(null, 1);
       });
 
@@ -35,7 +36,7 @@ describe('Ask', () => {
     });
 
     it('throws if the computation tries to complete twice', (done) => {
-      var askMe = new Ask(message => {
+      const askMe = new Ask(message => {
         message(null, 1);
         setTimeout(() => {
           try {
@@ -52,16 +53,16 @@ describe('Ask', () => {
     });
 
     it('run returns a cancellation function', (done) => {
-      var compCalled;
-      var askMe = new Ask(message => {
-        var to = setTimeout(() => {
+      let compCalled;
+      const askMe = new Ask(message => {
+        const to = setTimeout(() => {
           compCalled = true;
           message(null, 1);
         }, 500);
         return () => { clearTimeout(to); };
       });
 
-      var cancel = askMe.run((left, message) => {
+      const cancel = askMe.run(() => {
         assert.fail('Run Observer should never have been called');
       });
 
@@ -71,12 +72,11 @@ describe('Ask', () => {
         done();
       }, 100);
     });
-
   });
 
   describe('map', () => {
     it('maps', (done) => {
-      var askMe = new Ask(message => {
+      const askMe = new Ask(message => {
         message(null, 1);
       });
 
@@ -89,7 +89,7 @@ describe('Ask', () => {
     });
 
     it('does not map left', (done) => {
-      var askMe = new Ask(message => {
+      const askMe = new Ask(message => {
         message('boom');
       });
 
@@ -103,18 +103,18 @@ describe('Ask', () => {
     });
 
     it('run returns the original cancel', (done) => {
-      var compCalled;
-      var askMe = new Ask(message => {
-        var to = setTimeout(() => {
+      let compCalled;
+      const askMe = new Ask(message => {
+        const to = setTimeout(() => {
           compCalled = true;
           message(null, 1);
         }, 100);
         return () => { clearTimeout(to); };
       });
 
-      var mappedAsk = askMe.map(add1);
+      const mappedAsk = askMe.map(add1);
 
-      var cancel = mappedAsk.run((left, message) => {
+      const cancel = mappedAsk.run(() => {
         assert.fail('Run Observer should never have been called');
       });
 
@@ -124,11 +124,24 @@ describe('Ask', () => {
         done();
       }, 150);
     });
+
+    it('is exposed as a static method', (done) => {
+      const askMe = new Ask(message => {
+        message(null, 1);
+      });
+
+      Ask
+      .map(add1, askMe)
+      .run((left, message) => {
+        assert.equal(message, 2);
+        done();
+      });
+    });
   });
 
   describe('biChain', () => {
     it('chains', (done) => {
-      var askMe = new Ask(message => {
+      const askMe = new Ask(message => {
         message(null, 1);
       });
 
@@ -147,8 +160,8 @@ describe('Ask', () => {
     });
 
     it('calls the chaining ask on left', (done) => {
-      var askAddCalled;
-      var askMe = new Ask(message => {
+      let askAddCalled;
+      const askMe = new Ask(message => {
         message('boom');
       });
 
@@ -172,7 +185,7 @@ describe('Ask', () => {
 
   describe('chain', () => {
     it('chains', (done) => {
-      var askMe = new Ask(message => {
+      const askMe = new Ask(message => {
         message(null, 1);
       });
 
@@ -191,8 +204,8 @@ describe('Ask', () => {
     });
 
     it('does not call the chaining ask on left', (done) => {
-      var askAddCalled;
-      var askMe = new Ask(message => {
+      let askAddCalled;
+      const askMe = new Ask(message => {
         message('boom');
       });
 
@@ -216,13 +229,13 @@ describe('Ask', () => {
 
   describe('ap', () => {
     it('applies first right to passed asks right', (done) => {
-      var askMe = new Ask(message => {
+      const askMe = new Ask(message => {
         setTimeout(() => {
           message(null, add1);
         }, 10);
       });
 
-      var askYou = new Ask(message => {
+      const askYou = new Ask(message => {
         message(null, 5);
       });
 
@@ -237,19 +250,19 @@ describe('Ask', () => {
 
   describe('memoize', () => {
     it('run returns the original value and does not re-run computation', (done) => {
-      var called = 0;
-      var askMe = new Ask(message => {
+      let called = 0;
+      const askMe = new Ask(message => {
         message(null, 1);
         called++;
       });
 
-      var askMeMemo = askMe.memoize();
+      const askMeMemo = askMe.memoize();
 
       askMeMemo.run((left, message) => {
         assert.equal(message, 1);
       });
 
-      var secondCall = false;
+      let secondCall = false;
 
       setTimeout(() => {
         askMeMemo.run((left, message) => {
@@ -264,16 +277,16 @@ describe('Ask', () => {
     });
 
     it('notifies each run observer if the computation has not completed', (done) => {
-      var called = 0;
-      var runCalled = 0;
-      var askMe = new Ask(message => {
+      let called = 0;
+      let runCalled = 0;
+      const askMe = new Ask(message => {
         setTimeout(() => {
           message(null, 1);
         }, 100);
         called++;
       });
 
-      var askMeMemo = askMe.memoize();
+      const askMeMemo = askMe.memoize();
 
       askMeMemo.run((left, message) => {
         assert.equal(message, 1);
@@ -291,9 +304,9 @@ describe('Ask', () => {
 
   describe('all', () => {
     it('does not notify until all Asks are completed', (done) => {
-      var count = 0;
+      let count = 0;
       function createAsk(to) {
-        var order = ++count;
+        const order = ++count;
         return new Ask(message => {
           setTimeout(() => {
             message(null, order);
@@ -304,7 +317,7 @@ describe('Ask', () => {
       Ask.all([
         createAsk(100),
         createAsk(500),
-        createAsk(0)
+        createAsk(0),
       ]).run((left, right) => {
         assert.equal(count, 3);
         assert.deepEqual(right, [3, 1, 2]);
@@ -315,7 +328,7 @@ describe('Ask', () => {
     it('sends the first left and cancels other asks if a left occurs', (done) => {
       function createAsk(to, left) {
         return new Ask(message => {
-          var id = setTimeout(() => {
+          const id = setTimeout(() => {
             if (!left) {
               assert.fail('Should have been canceled');
             } else {
@@ -331,7 +344,7 @@ describe('Ask', () => {
       Ask.all([
         createAsk(100),
         createAsk(500),
-        createAsk(0, 'boom')
+        createAsk(0, 'boom'),
       ]).run((left, right) => {
         assert.equal(left, 'boom');
         assert.deepEqual(right, []);
@@ -342,7 +355,7 @@ describe('Ask', () => {
     it('wont throw even if proper cancel functions not returned', (done) => {
       function createAsk(to, left) {
         return new Ask(message => {
-          var id = setTimeout(() => {
+          setTimeout(() => {
             if (!left) {
               message(null, 'uh oh');
             } else {
@@ -352,12 +365,12 @@ describe('Ask', () => {
         });
       }
 
-      var callCount = 0;
+      let callCount = 0;
 
       Ask.all([
         createAsk(100, 'boom'),
         createAsk(500),
-        createAsk(0)
+        createAsk(0),
       ]).run((left, right) => {
         callCount++;
         assert.equal(left, 'boom');
@@ -371,11 +384,11 @@ describe('Ask', () => {
     });
 
     it('it returns the un-finishes array of rights if a left occurs', (done) => {
-      var count = 0;
+      let count = 0;
       function createAsk(to, left) {
-        var order = ++count;
+        const order = ++count;
         return new Ask(message => {
-          var id = setTimeout(() => {
+          const id = setTimeout(() => {
             if (!left) {
               message(null, order);
             } else {
@@ -388,14 +401,11 @@ describe('Ask', () => {
         });
       }
 
-      var callCount = 0;
-
       Ask.all([
         createAsk(100, 'boom'),
         createAsk(500),
-        createAsk(0)
+        createAsk(0),
       ]).run((left, right) => {
-        callCount++;
         assert.equal(left, 'boom');
         assert.deepEqual(right, [3]);
         done();
