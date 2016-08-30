@@ -7,10 +7,12 @@
   "devDependencies": {
     "browserify": "^13.0.1",
     "documentation": "^4.0.0-beta2",
-    "eslint": "^2.5.3",
-    "eslint-config-airbnb": "^6.2.0",
-    "mocha": "^2.2.1",
-    "sanctuary": "^0.10.0"
+    "eslint": "^3.4.0",
+    "eslint-config-airbnb": "^10.0.1",
+    "eslint-plugin-import": "^1.14.0",
+    "eslint-plugin-jsx-a11y": "^2.2.0",
+    "eslint-plugin-react": "^6.2.0",
+    "mocha": "^2.2.1"
   },
   "scripts": {
     "lint": "eslint test/ lib/",
