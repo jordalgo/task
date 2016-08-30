@@ -125,7 +125,7 @@ describe('Ask', () => {
       }, 150);
     });
 
-    it('is exposed as a static method', (done) => {
+    it('is exposed as a static function', (done) => {
       const askMe = new Ask(message => {
         message(null, 1);
       });
@@ -181,6 +181,25 @@ describe('Ask', () => {
         done();
       });
     });
+
+    it('is exposed as a static factory', (done) => {
+      const askMe = new Ask(message => {
+        message(null, 1);
+      });
+
+      function askAdd(left, right) {
+        return new Ask(message => {
+          message(left, (right) ? right + 5 : null);
+        });
+      }
+
+      Ask
+      .biChain(askAdd, askMe)
+      .run((left, message) => {
+        assert.equal(message, 6);
+        done();
+      });
+    });
   });
 
   describe('chain', () => {
@@ -217,11 +236,30 @@ describe('Ask', () => {
       }
 
       askMe
-      .biChain(askAdd)
+      .chain(askAdd)
       .run((left, right) => {
         assert.equal(left, 'boom');
         assert.ok(!right);
         assert.ok(!askAddCalled);
+        done();
+      });
+    });
+
+    it('is exposed as a static function', (done) => {
+      const askMe = new Ask(message => {
+        message(null, 1);
+      });
+
+      function askAdd(right) {
+        return new Ask(message => {
+          message(null, right + 5);
+        });
+      }
+
+      Ask
+      .chain(askAdd, askMe)
+      .run((left, right) => {
+        assert.equal(right, 6);
         done();
       });
     });
