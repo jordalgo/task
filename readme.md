@@ -106,5 +106,25 @@ Ask.all([
 });
 ```
 
+## Specifications compatibility
+
+<a href="https://github.com/fantasyland/fantasy-land">
+  <img width="50" height="50" src="https://raw.githubusercontent.com/fantasyland/fantasy-land/master/logo.png" />
+</a>
+<a href="https://github.com/rpominov/static-land">
+  <img width="80" height="50" src="https://raw.githubusercontent.com/rpominov/static-land/master/logo/logo.png" />
+</a>
+
+Task is compatible with [Fantasy Land](https://github.com/fantasyland/fantasy-land) and [Static Land](https://github.com/rpominov/static-land) implementing:
+
+- [Semigroup](https://github.com/fantasyland/fantasy-land#semigroup)
+- [Monoid](https://github.com/fantasyland/fantasy-land#monoid)
+- [Functor](https://github.com/fantasyland/fantasy-land#functor)
+- [Bifunctor](https://github.com/fantasyland/fantasy-land#bifunctor)
+- [Apply](https://github.com/fantasyland/fantasy-land#apply)
+- [Applicative](https://github.com/fantasyland/fantasy-land#applicative)
+- [Chain](https://github.com/fantasyland/fantasy-land#chain)
+- [Monad](https://github.com/fantasyland/fantasy-land#monad)
+
 ## Credits
 A lot of code was inspired and stolen directly from [data.task](https://github.com/folktale/data.task) (Quildreen Motta) and [fun-task](https://github.com/rpominov/fun-task) (Roman Pominov).
