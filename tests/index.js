@@ -139,7 +139,7 @@ describe('Ask', () => {
     });
   });
 
-  describe('biChain', () => {
+  describe('bichain', () => {
     it('chains', (done) => {
       const askMe = new Ask(message => {
         message(null, 1);
@@ -152,7 +152,7 @@ describe('Ask', () => {
       }
 
       askMe
-      .biChain(askAdd)
+      .bichain(askAdd)
       .run((left, message) => {
         assert.equal(message, 6);
         done();
@@ -173,7 +173,7 @@ describe('Ask', () => {
       }
 
       askMe
-      .biChain(askAdd)
+      .bichain(askAdd)
       .run((left, right) => {
         assert.equal(left, 'boom');
         assert.ok(!right);
@@ -194,7 +194,7 @@ describe('Ask', () => {
       }
 
       Ask
-      .biChain(askAdd, askMe)
+      .bichain(askAdd, askMe)
       .run((left, message) => {
         assert.equal(message, 6);
         done();
