@@ -305,6 +305,50 @@ describe('Ask', () => {
     });
   });
 
+  describe('concat', () => {
+    it('returns the first ask that completes', (done) => {
+      function createAsk(to, right) {
+        return new Ask(message => {
+          const id = setTimeout(() => {
+            message(null, right);
+          }, to);
+          return () => {
+            clearTimeout(id);
+          };
+        });
+      }
+
+      createAsk(100, 5)
+      .concat(createAsk(50, 3))
+      .run((left, right) => {
+        assert.equal(right, 3);
+        done();
+      });
+    });
+
+    it('is exposed as a static function', (done) => {
+      function createAsk(to, right) {
+        return new Ask(message => {
+          const id = setTimeout(() => {
+            message(null, right);
+          }, to);
+          return () => {
+            clearTimeout(id);
+          };
+        });
+      }
+
+      Ask.concat(
+        createAsk(100, 5),
+        createAsk(50, 3)
+      )
+      .run((left, right) => {
+        assert.equal(right, 3);
+        done();
+      });
+    });
+  });
+
   describe('memoize', () => {
     it('run returns the original value and does not re-run computation', (done) => {
       let called = 0;
