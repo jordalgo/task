@@ -326,6 +326,34 @@ describe('Ask', () => {
       });
     });
 
+    it('run returns a function that can cancel both', (done) => {
+      let cancelCalled = 0;
+      function createAsk(to, right) {
+        return new Ask(message => {
+          const id = setTimeout(() => {
+            message(null, right);
+          }, to);
+          return () => {
+            cancelCalled++;
+            clearTimeout(id);
+          };
+        });
+      }
+
+      const cancelBoth = createAsk(100, 5)
+      .concat(createAsk(50, 3))
+      .run(() => {
+        assert.fail('message called');
+      });
+
+      cancelBoth();
+
+      setTimeout(() => {
+        assert.equal(cancelCalled, 2);
+        done();
+      }, 150);
+    });
+
     it('is exposed as a static function', (done) => {
       function createAsk(to, right) {
         return new Ask(message => {
