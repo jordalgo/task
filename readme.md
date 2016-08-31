@@ -141,5 +141,10 @@ Task is compatible with [Fantasy Land](https://github.com/fantasyland/fantasy-la
 - [Chain](https://github.com/fantasyland/fantasy-land#chain)
 - [Monad](https://github.com/fantasyland/fantasy-land#monad)
 
+## How are Asks different than Data.Task or Fun-Task
+- Asks throw an error if you attempt to call left or right after a left or right has been called.
+- Asks offer a memoization method that allow you to treat Asks more like promises so computations dont get called more than once if multiple parts of your code call `run` on an Ask.
+- No special or magical error catching involved.
+
 ## Credits
 A lot of code was inspired and stolen directly from [data.task](https://github.com/folktale/data.task) (Quildreen Motta) and [fun-task](https://github.com/rpominov/fun-task) (Roman Pominov).
