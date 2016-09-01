@@ -5,6 +5,8 @@
   "main": "lib/index.js",
   "dependencies": {},
   "devDependencies": {
+    "babel-preset-es2015": "^6.14.0",
+    "babelify": "^7.3.0",
     "browserify": "^13.0.1",
     "documentation": "^4.0.0-beta2",
     "eslint": "^3.4.0",
@@ -18,7 +20,7 @@
     "lint": "eslint test/ lib/",
     "test": "mocha -R spec test/*.js",
     "docs": "node generate-api.js",
-    "build": "browserify -s estream lib/index.js > estream.js"
+    "build": "browserify -s ask -t [ babelify --presets [ es2015 ] ] lib/index.js > ask.js"
   },
   "repository": {
     "type": "git",
