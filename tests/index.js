@@ -173,6 +173,45 @@ describe('Ask', () => {
       );
     });
 
+    it('will recursively cancel', (done) => {
+      let firstAskComplete;
+      let secondAskCanceled;
+      const askMe = new Ask((left) => {
+        setTimeout(() => {
+          firstAskComplete = true;
+          left(1);
+        }, 50);
+      });
+
+      function askAdd(l) {
+        return new Ask((left, right) => {
+          const id = setTimeout(() => {
+            right(l + 5);
+          }, 100);
+          return () => {
+            secondAskCanceled = true;
+            clearTimeout(id);
+          };
+        });
+      }
+
+      const cancel = askMe
+      .bichain(askAdd, noop)
+      .run(
+        noop,
+        assert.fail.bind(assert, 'right called')
+      );
+
+      setTimeout(() => {
+        assert.ok(firstAskComplete);
+        cancel();
+        setTimeout(() => {
+          assert.ok(secondAskCanceled);
+          done();
+        }, 250);
+      }, 100);
+    });
+
     it('is exposed as a static factory', (done) => {
       const askMe = new Ask((left) => {
         left(2);
@@ -249,6 +288,45 @@ describe('Ask', () => {
           assert.fail('right got called');
         }
       );
+    });
+
+    it('will recursively cancel', (done) => {
+      let firstAskComplete;
+      let secondAskCanceled;
+      const askMe = new Ask((left, right) => {
+        setTimeout(() => {
+          firstAskComplete = true;
+          right(1);
+        }, 50);
+      });
+
+      function askAdd(r) {
+        return new Ask((left, right) => {
+          const id = setTimeout(() => {
+            right(r + 5);
+          }, 100);
+          return () => {
+            secondAskCanceled = true;
+            clearTimeout(id);
+          };
+        });
+      }
+
+      const cancel = askMe
+      .chain(askAdd)
+      .run(
+        noop,
+        assert.fail.bind(assert, 'right called')
+      );
+
+      setTimeout(() => {
+        assert.ok(firstAskComplete);
+        cancel();
+        setTimeout(() => {
+          assert.ok(secondAskCanceled);
+          done();
+        }, 250);
+      }, 100);
     });
 
     it('is exposed as a static function', (done) => {
