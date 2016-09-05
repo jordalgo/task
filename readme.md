@@ -1,6 +1,11 @@
 # Task
 
-A javascript data type for async requests. Very similar to the [data.task](https://github.com/folktale/data.task) and [fun-task](https://github.com/rpominov/fun-task) with some modifications.
+A javascript data type for async requests. Very similar to the [data.task](https://github.com/folktale/data.task) and [fun-task](https://github.com/rpominov/fun-task) with some modifications. Published as jordalgo-task
+
+## Installing
+```
+npm install jordalgo-task
+```
 
 ## Example
 ```javascript
