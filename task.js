@@ -1,4 +1,10 @@
-(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.ask = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.task = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+'use strict';
+
+var Task = require('./task');
+module.exports = Task;
+
+},{"./task":2}],2:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -15,8 +21,12 @@ if (typeof setImmediate !== 'undefined') {
   delayed = process.nextTick;
 }
 
+function cancelHolder() {
+  console.warn('Task: cancel called on function that did not provide a custom cancel.');
+}
+
 /**
- * The `Ask[a, b]` structure represents values that depend on time. This
+ * The `Task[a, b]` structure represents values that depend on time. This
  * allows one to model time-based effects explicitly, such that one can have
  * full knowledge of when they're dealing with delayed computations, latency,
  * or anything that can not be computed immediately.
@@ -27,15 +37,15 @@ if (typeof setImmediate !== 'undefined') {
  * time-dependent effects using the generic and powerful monadic operations.
  *
  * @class
- * @summary ((a → b) → c) → Ask[a, b]
+ * @summary ((a → b) → c) → Task[a, b]
  */
-function Ask(computation) {
-  this.run = function taskRun(leftSub, rightSub) {
+function Task(computation) {
+  this.run = function taskRun(failSub, successSub) {
     var compCalled = false;
     function wrapped(fn) {
       return function (val) {
         if (compCalled) {
-          throw new Error('Ask computations can call either left or right, not both.');
+          throw new Error('Task computations can call either sendFail or sendSuccess, not both.');
         }
         compCalled = true;
         delayed(function () {
@@ -43,135 +53,145 @@ function Ask(computation) {
         });
       };
     }
-    var compCancel = computation(wrapped(leftSub), wrapped(rightSub));
-    return typeof compCancel === 'function' ? compCancel : function () {};
+    var compCancel = computation(wrapped(failSub), wrapped(successSub));
+    return typeof compCancel === 'function' ? compCancel : cancelHolder;
   };
 }
 
 /**
- * Transforms the right value of the `Ask[l, a]` using a regular unary
+ * Transforms the success value of the `Task[l, a]` using a regular unary
  * function.
  *
- * @summary ((a → b) → Ask[l, a]) → Ask[l, b]
+ * @summary ((a → b) → Task[l, a]) → Ask[l, b]
  */
-Ask.map = function map(fn, ask) {
-  return new Ask(function (left, right) {
-    return ask.run(left, function (x) {
-      right(fn(x));
+Task.map = function map(fn, ask) {
+  return new Task(function (sendFail, sendSuccess) {
+    return ask.run(sendFail, function (success) {
+      sendSuccess(fn(success));
     });
   });
 };
 
-Ask.prototype.map = function _map(fn) {
-  return Ask.map(fn, this);
+Task.prototype.map = function _map(fn) {
+  return Task.map(fn, this);
 };
 
 /**
- * Transforms the left or right values of the `Ask[α, β]` using two regular unary
+ * Transforms the fail or success values of the `Task[a, b]` using two regular unary
  * functions depending on what exists.
  *
- * @summary ((a → b), (c → d), Ask[a, c]) → Ask[b, d]
+ * @summary ((a → b), (c → d), Task[a, c]) → Task[b, d]
  */
-Ask.bimap = function bimap(fnLeft, fnRight, ask) {
-  return new Ask(function (left, right) {
-    return ask.run(function (a) {
-      left(fnLeft(a));
-    }, function (b) {
-      right(fnRight(b));
+Task.bimap = function bimap(fnFail, fnSuccess, task) {
+  return new Task(function (sendFail, sendSuccess) {
+    return task.run(function (fail) {
+      sendFail(fnFail(fail));
+    }, function (success) {
+      sendSuccess(fnSuccess(success));
     });
   });
 };
 
-Ask.prototype.bimap = function _bimap(fnLeft, fnRight) {
-  return Ask.bimap(fnLeft, fnRight, this);
+Task.prototype.bimap = function _bimap(fnFail, fnSuccess) {
+  return Task.bimap(fnFail, fnSuccess, this);
 };
 
 /**
- * Transforms the right value of the `Ask[a, b]` using a function to a
+ * Transforms the success value of the `Task[a, b]` using a function to a
  * monad.
  *
- * @summary ((b → Ask[c, d]) → @Ask[a, b]) → Ask[a, d]
+ * @summary ((b → Task[c, d]) → @Task[a, b]) → Task[a, d]
  */
-Ask.chain = function chain(fn, ask) {
-  return new Ask(function (left, right) {
-    return ask.run(left, function (r) {
-      fn(r).run(left, right);
+Task.chain = function chain(fn, task) {
+  return new Task(function (sendFail, sendSuccess) {
+    var futureCancel = function futureCancel() {};
+    var cancel = task.run(sendFail, function (success) {
+      futureCancel = fn(success).run(sendFail, sendSuccess);
     });
+    return function () {
+      cancel();
+      futureCancel();
+    };
   });
 };
 
-Ask.prototype.chain = function _chain(fn) {
-  return Ask.chain(fn, this);
+Task.prototype.chain = function _chain(fn) {
+  return Task.chain(fn, this);
 };
 
 /**
- * Passes both the left and right values of the `Ask[a, b]`
- * to a function that returns an `Ask[c, d]`.
+ * Passes both the fail and success values of the `Task[a, b]`
+ * to a function that returns an `Task[c, d]`.
  *
- * @summary ((a → c) → (b → d) → Ask[a, b]) → Ask[c, d]
+ * @summary ((a → c) → (b → d) → Task[a, b]) → Task[c, d]
  */
-Ask.bichain = function bichain(fnLeft, fnRight, ask) {
-  return new Ask(function (left, right) {
-    return ask.run(function (l) {
-      fnLeft(l).run(left, right);
-    }, function (r) {
-      fnRight(r).run(left, right);
+Task.bichain = function bichain(fnFail, fnSuccess, task) {
+  return new Task(function (sendFail, sendSuccess) {
+    var futureCancel = function futureCancel() {};
+    var cancel = task.run(function (fail) {
+      futureCancel = fnFail(fail).run(sendFail, sendSuccess);
+    }, function (success) {
+      futureCancel = fnSuccess(success).run(sendFail, sendSuccess);
     });
+    return function () {
+      cancel();
+      futureCancel();
+    };
   });
 };
 
-Ask.prototype.bichain = function _bichain(fnLeft, fnRight) {
-  return Ask.bichain(fnLeft, fnRight, this);
+Task.prototype.bichain = function _bichain(fnFail, fnSuccess) {
+  return Task.bichain(fnFail, fnSuccess, this);
 };
 
 /**
- * Applys the right value of the `Ask[a, (b → c)]` to the right
- * value of the `Ask[d, b]`
+ * Applys the success value of the `Task[a, (b → c)]` to the success
+ * value of the `Task[d, b]`
  *
- * @summary (Ask[d, b] → Ask[a, (b → c)]) → Ask[a, c]
+ * @summary (Task[d, b] → Task[a, (b → c)]) → Task[a, c]
  */
-Ask.ap = function ap(askP, askZ) {
-  var pRight = void 0;
-  var pLeft = void 0;
-  var zRight = void 0;
-  var zLeft = void 0;
+Task.ap = function ap(taskP, taskZ) {
+  var pSuccess = void 0;
+  var pFail = void 0;
+  var zSuccess = void 0;
+  var zFail = void 0;
   var completed = void 0;
 
-  function runApply(left, right) {
-    if (left) {
-      left(zLeft || pLeft);
+  function runApply(sendFail, sendSuccess) {
+    if (sendFail) {
+      sendFail(zFail || pFail);
     } else {
-      right(zRight(pRight));
+      sendSuccess(zSuccess(pSuccess));
     }
   }
 
-  return new Ask(function (left, right) {
-    askP.run(function (lP) {
-      pLeft = lP;
+  return new Task(function (sendFail, sendSuccess) {
+    taskP.run(function (fP) {
+      pFail = fP;
       if (completed) {
-        runApply(left, null);
+        runApply(sendFail, null);
       } else {
         completed = true;
       }
-    }, function (rP) {
-      pRight = rP;
+    }, function (sP) {
+      pSuccess = sP;
       if (completed) {
-        runApply(null, right);
+        runApply(null, sendSuccess);
       } else {
         completed = true;
       }
     });
-    return askZ.run(function (lZ) {
-      zLeft = lZ;
+    return taskZ.run(function (fZ) {
+      zFail = fZ;
       if (completed) {
-        runApply(left, null);
+        runApply(sendFail, null);
       } else {
         completed = true;
       }
-    }, function (zP) {
-      zRight = zP;
+    }, function (sZ) {
+      zSuccess = sZ;
       if (completed) {
-        runApply(null, right);
+        runApply(null, sendSuccess);
       } else {
         completed = true;
       }
@@ -179,41 +199,41 @@ Ask.ap = function ap(askP, askZ) {
   });
 };
 
-Ask.prototype.ap = function _ap(askP) {
-  return Ask.ap(askP, this);
+Task.prototype.ap = function _ap(taskP) {
+  return Task.ap(taskP, this);
 };
 
 /**
- * Take the earlier of the two Asks
+ * Take the earlier of the two Tasks
  *
- * @summary (Ask[a, b] → Ask[a → b)]) → Ask[a, b]
+ * @summary (Task[a, b] → Task[a → b)]) → Task[a, b]
  */
-Ask.concat = function concat(askA, askB) {
+Task.concat = function concat(taskA, taskB) {
   var oneFinished = void 0;
   var cancelA = void 0;
   var cancelB = void 0;
-  return new Ask(function (left, right) {
-    cancelA = askA.run(function (lA) {
+  return new Task(function (sendFail, sendSuccess) {
+    cancelA = taskA.run(function (lA) {
       if (oneFinished) return;
       oneFinished = true;
       cancelB();
-      left(lA);
+      sendFail(lA);
     }, function (rA) {
       if (oneFinished) return;
       oneFinished = true;
       cancelB();
-      right(rA);
+      sendSuccess(rA);
     });
-    cancelB = askB.run(function (lA) {
+    cancelB = taskB.run(function (lA) {
       if (oneFinished) return;
       oneFinished = true;
       cancelA();
-      left(lA);
+      sendFail(lA);
     }, function (rA) {
       if (oneFinished) return;
       oneFinished = true;
       cancelA();
-      right(rA);
+      sendSuccess(rA);
     });
     // cancel both
     return function () {
@@ -223,160 +243,160 @@ Ask.concat = function concat(askA, askB) {
   });
 };
 
-Ask.prototype.concat = function _concat(askA) {
-  return Ask.concat(askA, this);
+Task.prototype.concat = function _concat(taskA) {
+  return Task.concat(taskA, this);
 };
 
 /**
- * Memoizes the left and right values from an Ask[a, b].
- * Run can be called multiple times on the produced Ask
+ * Memoizes the fail and success values from an Task[a, b].
+ * Run can be called multiple times on the produced Task
  * and the computation is not re-run.
  *
- * @summary Ask[a, b] → Ask[a, b]
+ * @summary Task[a, b] → Ask[a, b]
  */
-Ask.memoize = function memoize(ask) {
+Task.memoize = function memoize(task) {
   var compCalled = false;
   var runReturned = false;
-  var futureLeft = void 0;
-  var futureRight = void 0;
-  var rightSubs = [];
-  var leftSubs = [];
+  var futureFail = void 0;
+  var futureSuccess = void 0;
+  var successSubs = [];
+  var failSubs = [];
   var cancelFn = void 0;
-  return new Ask(function (left, right) {
+  return new Task(function (sendFail, sendSuccess) {
     if (compCalled && runReturned) {
-      if (runReturned === 'left') {
-        left(futureLeft);
+      if (runReturned === 'fail') {
+        sendFail(futureFail);
       } else {
-        right(futureRight);
+        sendSuccess(futureSuccess);
       }
       return function () {};
     } else if (compCalled) {
-      if (leftSubs.indexOf(left) === -1) {
-        leftSubs.push(left);
+      if (failSubs.indexOf(sendFail) === -1) {
+        failSubs.push(sendFail);
       }
-      if (rightSubs.indexOf(right) === -1) {
-        rightSubs.push(right);
+      if (successSubs.indexOf(sendSuccess) === -1) {
+        successSubs.push(sendSuccess);
       }
       return cancelFn;
     }
     compCalled = true;
-    rightSubs.push(right);
-    leftSubs.push(left);
-    return ask.run(function (l) {
-      runReturned = 'left';
-      futureLeft = l;
-      leftSubs.forEach(function (sub) {
-        sub(l);
+    successSubs.push(sendSuccess);
+    failSubs.push(sendFail);
+    return task.run(function (f) {
+      runReturned = 'fail';
+      futureFail = f;
+      failSubs.forEach(function (sub) {
+        sub(f);
       });
       delayed(function () {
-        leftSubs = [];
+        failSubs = [];
       });
-    }, function (r) {
-      runReturned = 'right';
-      futureRight = r;
-      rightSubs.forEach(function (sub) {
-        sub(r);
+    }, function (s) {
+      runReturned = 'success';
+      futureSuccess = s;
+      successSubs.forEach(function (sub) {
+        sub(s);
       });
       delayed(function () {
-        rightSubs = [];
+        successSubs = [];
       });
     });
   });
 };
 
-Ask.prototype.memoize = function _memoize() {
-  return Ask.memoize(this);
+Task.prototype.memoize = function _memoize() {
+  return Task.memoize(this);
 };
 
 /**
- * Constructs a new `Ask[a, b]` containing the single value `b`.
+ * Constructs a new `Task[a, b]` containing the single value `b`.
  *
  * `b` can be any value, including `null`, `undefined`, or another
- * `Ask[a, b]` structure.
+ * `Task[a, b]` structure.
  *
- * @summary b → Ask[a, b]
+ * @summary b → Task[a, b]
  */
-Ask.prototype.of = function of(r) {
-  return new Ask(function (left, right) {
-    right(r);
+Task.prototype.of = function of(success) {
+  return new Task(function (sendFail, sendSuccess) {
+    sendSuccess(success);
   });
 };
 
-Ask.of = Ask.prototype.of;
+Task.of = Task.prototype.of;
 
 /**
- * Constructs a new `Ask[a, b]` containing the single value `a`.
+ * Constructs a new `Task[a, b]` containing the single value `a`.
  *
  * `a` can be any value, including `null`, `undefined`, or another
- * `Ask[a, b]` structure.
+ * `Task[a, b]` structure.
  *
- * @summary a → Ask[a, b]
+ * @summary a → Task[a, b]
  */
-Ask.prototype.ofLeft = function ofLeft(l) {
-  return new Ask(function (left) {
-    left(l);
+Task.prototype.fail = function fail(f) {
+  return new Task(function (sendFail) {
+    sendFail(f);
   });
 };
 
-Ask.ofLeft = Ask.prototype.ofLeft;
+Task.fail = Task.prototype.fail;
 
 /**
- * Returns an Ask that will never resolve
+ * Returns an Task that will never resolve
  *
- * @summary Void → Aask[_, _]
+ * @summary Void → Task[_, _]
  */
-Ask.empty = function _empty() {
-  return new Ask(function () {});
+Task.empty = function _empty() {
+  return new Task(function () {});
 };
 
-Ask.prototype.empty = Ask.empty;
+Task.prototype.empty = Task.empty;
 
-Ask.prototype.toString = function toString() {
-  return 'Ask';
-};
-
-/**
- * Factory function for creating a new `Ask[a, b]`
- *
- * @summary ((a → b) → c) → Ask[a, b]
- */
-Ask.create = function create(comp) {
-  return new Ask(comp);
+Task.prototype.toString = function toString() {
+  return 'Task';
 };
 
 /**
- * Creates a single Ask out of many that doesnt complete
- * until each resolve with all rights or a single left occurs.
- * Will pass the incomplete array of rights if some have occured before a left.
+ * Factory function for creating a new `Task[a, b]`
  *
- * @summary [Ask[a, b]] → Ask[a, [b]]
+ * @summary ((a → b) → c) → Task[a, b]
+ */
+Task.create = function create(comp) {
+  return new Task(comp);
+};
+
+/**
+ * Creates a single Task out of many that doesnt complete
+ * until each resolve with all successs or a single fail occurs.
+ * Will pass the incomplete array of successs if some have occured before a fail.
+ *
+ * @summary [Task[a, b]] → Task[a, [b]]
 
  */
-Ask.all = function (askArray) {
-  var rights = [];
+Task.all = function (taskArray) {
+  var successs = [];
   var cancels = [];
   var compCalled = false;
 
   function cleanUp() {
     cancels = [];
-    rights = [];
+    successs = [];
     compCalled = true;
   }
 
-  return new Ask(function (left, right) {
-    askArray.forEach(function (a) {
-      var cancel = a.run(function (l) {
+  return new Task(function (sendFail, sendSuccess) {
+    taskArray.forEach(function (a) {
+      var cancel = a.run(function (f) {
         if (compCalled) return;
         cancels.forEach(function (c) {
           c();
         });
-        left(l);
+        sendFail(f);
         cleanUp();
-      }, function (r) {
+      }, function (s) {
         if (compCalled) return;
-        rights.push(r);
-        if (rights.length === askArray.length) {
-          right(rights);
+        successs.push(s);
+        if (successs.length === taskArray.length) {
+          sendSuccess(successs);
           cleanUp();
         }
       });
@@ -390,16 +410,10 @@ Ask.all = function (askArray) {
   });
 };
 
-module.exports = Ask;
+module.exports = Task;
 
 }).call(this,require('_process'))
-},{"_process":3}],2:[function(require,module,exports){
-'use strict';
-
-var Ask = require('./ask');
-module.exports = Ask;
-
-},{"./ask":1}],3:[function(require,module,exports){
+},{"_process":3}],3:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -561,5 +575,5 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}]},{},[2])(2)
+},{}]},{},[1])(1)
 });

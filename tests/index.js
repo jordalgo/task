@@ -1,14 +1,14 @@
 const assert = require('assert');
-const Ask = require('../lib');
+const Task = require('../lib');
 
 const add1 = function(x) { return x + 1; };
 const noop = () => {};
 
-describe('Ask', () => {
+describe('Task', () => {
   describe('base', () => {
     it('only runs the computation when run is called', (done) => {
       let compCalled;
-      const askMe = new Ask((left, right) => {
+      const askMe = new Task((left, right) => {
         setTimeout(() => {
           compCalled = true;
           right(1);
@@ -24,7 +24,7 @@ describe('Ask', () => {
 
     it('always executes the observers async', (done) => {
       let compCalled;
-      const askMe = new Ask((left, right) => {
+      const askMe = new Task((left, right) => {
         right(1);
       });
 
@@ -37,7 +37,7 @@ describe('Ask', () => {
     });
 
     it('throws if the computation tries to complete twice', (done) => {
-      const askMe = new Ask((left, right) => {
+      const askMe = new Task((left, right) => {
         right(1);
         setTimeout(() => {
           try {
@@ -55,7 +55,7 @@ describe('Ask', () => {
 
     it('run returns a cancellation function', (done) => {
       let compCalled;
-      const askMe = new Ask((left, right) => {
+      const askMe = new Task((left, right) => {
         const to = setTimeout(() => {
           compCalled = true;
           right(1);
@@ -77,7 +77,7 @@ describe('Ask', () => {
 
   describe('map', () => {
     it('maps', (done) => {
-      const askMe = new Ask((left, right) => {
+      const askMe = new Task((left, right) => {
         right(1);
       });
 
@@ -90,7 +90,7 @@ describe('Ask', () => {
     });
 
     it('does not map lefts', (done) => {
-      const askMe = new Ask((left) => {
+      const askMe = new Task((left) => {
         left('boom');
       });
 
@@ -107,7 +107,7 @@ describe('Ask', () => {
 
     it('run returns the original cancel', (done) => {
       let compCalled;
-      const askMe = new Ask((left, right) => {
+      const askMe = new Task((left, right) => {
         const to = setTimeout(() => {
           compCalled = true;
           right(1);
@@ -115,9 +115,9 @@ describe('Ask', () => {
         return () => { clearTimeout(to); };
       });
 
-      const mappedAsk = askMe.map(add1);
+      const mappedTask = askMe.map(add1);
 
-      const cancel = mappedAsk.run(noop, () => {
+      const cancel = mappedTask.run(noop, () => {
         assert.fail('Run right sub called');
       });
 
@@ -129,11 +129,11 @@ describe('Ask', () => {
     });
 
     it('is exposed as a static function', (done) => {
-      const askMe = new Ask((left, right) => {
+      const askMe = new Task((left, right) => {
         right(1);
       });
 
-      Ask
+      Task
       .map(add1, askMe)
       .run(noop, right => {
         assert.equal(right, 2);
@@ -144,18 +144,18 @@ describe('Ask', () => {
 
   describe('bichain', () => {
     it('chains for both left and right', (done) => {
-      const askMe = new Ask((left) => {
+      const askMe = new Task((left) => {
         left(2);
       });
 
       function askAddLeft(l) {
-        return new Ask((left) => {
+        return new Task((left) => {
           left(l - 1);
         });
       }
 
       function askAddRight(r) {
-        return new Ask((left, right) => {
+        return new Task((left, right) => {
           right(r + 10);
         });
       }
@@ -174,22 +174,22 @@ describe('Ask', () => {
     });
 
     it('will recursively cancel', (done) => {
-      let firstAskComplete;
-      let secondAskCanceled;
-      const askMe = new Ask((left) => {
+      let firstTaskComplete;
+      let secondTaskCanceled;
+      const askMe = new Task((left) => {
         setTimeout(() => {
-          firstAskComplete = true;
+          firstTaskComplete = true;
           left(1);
         }, 50);
       });
 
       function askAdd(l) {
-        return new Ask((left, right) => {
+        return new Task((left, right) => {
           const id = setTimeout(() => {
             right(l + 5);
           }, 100);
           return () => {
-            secondAskCanceled = true;
+            secondTaskCanceled = true;
             clearTimeout(id);
           };
         });
@@ -203,33 +203,33 @@ describe('Ask', () => {
       );
 
       setTimeout(() => {
-        assert.ok(firstAskComplete);
+        assert.ok(firstTaskComplete);
         cancel();
         setTimeout(() => {
-          assert.ok(secondAskCanceled);
+          assert.ok(secondTaskCanceled);
           done();
         }, 250);
       }, 100);
     });
 
     it('is exposed as a static factory', (done) => {
-      const askMe = new Ask((left) => {
+      const askMe = new Task((left) => {
         left(2);
       });
 
       function askAddLeft(l) {
-        return new Ask((left) => {
+        return new Task((left) => {
           left(l - 1);
         });
       }
 
       function askAddRight(r) {
-        return new Ask((left, right) => {
+        return new Task((left, right) => {
           right(r + 10);
         });
       }
 
-      Ask
+      Task
       .bichain(askAddLeft, askAddRight, askMe)
       .run(
         l => {
@@ -245,12 +245,12 @@ describe('Ask', () => {
 
   describe('chain', () => {
     it('chains', (done) => {
-      const askMe = new Ask((left, right) => {
+      const askMe = new Task((left, right) => {
         right(1);
       });
 
       function askAdd(r) {
-        return new Ask((left, right) => {
+        return new Task((left, right) => {
           right(r + 5);
         });
       }
@@ -265,13 +265,13 @@ describe('Ask', () => {
 
     it('does not call the chaining ask on left', (done) => {
       let askAddCalled;
-      const askMe = new Ask((left) => {
+      const askMe = new Task((left) => {
         left('boom');
       });
 
       function askAdd(r) {
         askAddCalled = true;
-        return new Ask((left, right) => {
+        return new Task((left, right) => {
           right(r + 5);
         });
       }
@@ -291,22 +291,22 @@ describe('Ask', () => {
     });
 
     it('will recursively cancel', (done) => {
-      let firstAskComplete;
-      let secondAskCanceled;
-      const askMe = new Ask((left, right) => {
+      let firstTaskComplete;
+      let secondTaskCanceled;
+      const askMe = new Task((left, right) => {
         setTimeout(() => {
-          firstAskComplete = true;
+          firstTaskComplete = true;
           right(1);
         }, 50);
       });
 
       function askAdd(r) {
-        return new Ask((left, right) => {
+        return new Task((left, right) => {
           const id = setTimeout(() => {
             right(r + 5);
           }, 100);
           return () => {
-            secondAskCanceled = true;
+            secondTaskCanceled = true;
             clearTimeout(id);
           };
         });
@@ -320,27 +320,27 @@ describe('Ask', () => {
       );
 
       setTimeout(() => {
-        assert.ok(firstAskComplete);
+        assert.ok(firstTaskComplete);
         cancel();
         setTimeout(() => {
-          assert.ok(secondAskCanceled);
+          assert.ok(secondTaskCanceled);
           done();
         }, 250);
       }, 100);
     });
 
     it('is exposed as a static function', (done) => {
-      const askMe = new Ask((left, right) => {
+      const askMe = new Task((left, right) => {
         right(1);
       });
 
       function askAdd(r) {
-        return new Ask((left, right) => {
+        return new Task((left, right) => {
           right(r + 5);
         });
       }
 
-      Ask
+      Task
       .chain(askAdd, askMe)
       .run(noop, right => {
         assert.equal(right, 6);
@@ -351,13 +351,13 @@ describe('Ask', () => {
 
   describe('ap', () => {
     it('applies first right to passed asks right', (done) => {
-      const askMe = new Ask((left, right) => {
+      const askMe = new Task((left, right) => {
         setTimeout(() => {
           right(add1);
         }, 10);
       });
 
-      const askYou = new Ask((left, right) => {
+      const askYou = new Task((left, right) => {
         right(5);
       });
 
@@ -370,17 +370,17 @@ describe('Ask', () => {
     });
 
     it('is exposed as a static function', (done) => {
-      const askMe = new Ask((left, right) => {
+      const askMe = new Task((left, right) => {
         setTimeout(() => {
           right(add1);
         }, 10);
       });
 
-      const askYou = new Ask((left, right) => {
+      const askYou = new Task((left, right) => {
         right(5);
       });
 
-      Ask
+      Task
       .ap(askYou, askMe)
       .run(noop, right => {
         assert.equal(right, 6);
@@ -391,8 +391,8 @@ describe('Ask', () => {
 
   describe('concat', () => {
     it('returns the first ask that completes', (done) => {
-      function createAsk(to, r) {
-        return new Ask((left, right) => {
+      function createTask(to, r) {
+        return new Task((left, right) => {
           const id = setTimeout(() => {
             right(r);
           }, to);
@@ -402,8 +402,8 @@ describe('Ask', () => {
         });
       }
 
-      createAsk(100, 5)
-      .concat(createAsk(50, 3))
+      createTask(100, 5)
+      .concat(createTask(50, 3))
       .run(noop, right => {
         assert.equal(right, 3);
         done();
@@ -412,8 +412,8 @@ describe('Ask', () => {
 
     it('run returns a function that can cancel both', (done) => {
       let cancelCalled = 0;
-      function createAsk(to, r) {
-        return new Ask((left, right) => {
+      function createTask(to, r) {
+        return new Task((left, right) => {
           const id = setTimeout(() => {
             right(r);
           }, to);
@@ -424,8 +424,8 @@ describe('Ask', () => {
         });
       }
 
-      const cancelBoth = createAsk(100, 5)
-      .concat(createAsk(50, 3))
+      const cancelBoth = createTask(100, 5)
+      .concat(createTask(50, 3))
       .run(noop, () => {
         assert.fail('message called');
       });
@@ -439,8 +439,8 @@ describe('Ask', () => {
     });
 
     it('is exposed as a static function', (done) => {
-      function createAsk(to, r) {
-        return new Ask((left, right) => {
+      function createTask(to, r) {
+        return new Task((left, right) => {
           const id = setTimeout(() => {
             right(r);
           }, to);
@@ -450,8 +450,8 @@ describe('Ask', () => {
         });
       }
 
-      Ask
-      .concat(createAsk(50, 3), createAsk(100, 5))
+      Task
+      .concat(createTask(50, 3), createTask(100, 5))
       .run(noop, right => {
         assert.equal(right, 3);
         done();
@@ -462,7 +462,7 @@ describe('Ask', () => {
   describe('memoize', () => {
     it('run returns the original value and does not re-run computation', (done) => {
       let called = 0;
-      const askMe = new Ask((left, right) => {
+      const askMe = new Task((left, right) => {
         right(1);
         called++;
       });
@@ -490,7 +490,7 @@ describe('Ask', () => {
     it('notifies each run observer if the computation has not completed', (done) => {
       let called = 0;
       let runCalled = 0;
-      const askMe = new Ask((left, right) => {
+      const askMe = new Task((left, right) => {
         setTimeout(() => {
           right(1);
         }, 100);
@@ -514,12 +514,12 @@ describe('Ask', () => {
 
     it('is exposed as a static function', (done) => {
       let called = 0;
-      const askMe = new Ask((left, right) => {
+      const askMe = new Task((left, right) => {
         right(1);
         called++;
       });
 
-      const askMeMemo = Ask.memoize(askMe);
+      const askMeMemo = Task.memoize(askMe);
 
       askMeMemo.run(noop, right => {
         assert.equal(right, 1);
@@ -541,21 +541,21 @@ describe('Ask', () => {
   });
 
   describe('all', () => {
-    it('does not notify until all Asks are completed', (done) => {
+    it('does not notify until all Tasks are completed', (done) => {
       let count = 0;
-      function createAsk(to) {
+      function createTask(to) {
         const order = ++count;
-        return new Ask((left, right) => {
+        return new Task((left, right) => {
           setTimeout(() => {
             right(order);
           }, to);
         });
       }
 
-      Ask.all([
-        createAsk(100),
-        createAsk(500),
-        createAsk(0),
+      Task.all([
+        createTask(100),
+        createTask(500),
+        createTask(0),
       ]).run(noop, right => {
         assert.equal(count, 3);
         assert.deepEqual(right, [3, 1, 2]);
@@ -564,8 +564,8 @@ describe('Ask', () => {
     });
 
     it('sends the first left and cancels other asks if a left occurs', (done) => {
-      function createAsk(to, l) {
-        return new Ask((left) => {
+      function createTask(to, l) {
+        return new Task((left) => {
           const id = setTimeout(() => {
             if (!l) {
               assert.fail('Should have been canceled');
@@ -579,10 +579,10 @@ describe('Ask', () => {
         });
       }
 
-      Ask.all([
-        createAsk(100),
-        createAsk(500),
-        createAsk(0, 'boom'),
+      Task.all([
+        createTask(100),
+        createTask(500),
+        createTask(0, 'boom'),
       ]).run(
         left => {
           assert.equal(left, 'boom');
@@ -595,8 +595,8 @@ describe('Ask', () => {
     });
 
     it('wont throw even if proper cancel functions not returned', (done) => {
-      function createAsk(to, l) {
-        return new Ask((left, right) => {
+      function createTask(to, l) {
+        return new Task((left, right) => {
           setTimeout(() => {
             if (!l) {
               right('uh oh');
@@ -609,10 +609,10 @@ describe('Ask', () => {
 
       let callCount = 0;
 
-      Ask.all([
-        createAsk(100, 'boom'),
-        createAsk(500),
-        createAsk(0),
+      Task.all([
+        createTask(100, 'boom'),
+        createTask(500),
+        createTask(0),
       ]).run(
         left => {
           callCount++;

@@ -1,5 +1,5 @@
 {
-  "name": "ask",
+  "name": "Task",
   "version": "0.1.0",
   "description": "A javascript monad for dealing with async tasks",
   "main": "lib/index.js",
@@ -20,11 +20,11 @@
     "lint": "eslint test/ lib/",
     "test": "mocha -R spec test/*.js",
     "docs": "node generate-api.js",
-    "build": "browserify -s ask -t [ babelify --presets [ es2015 ] ] lib/index.js > ask.js"
+    "build": "browserify -s task -t [ babelify --presets [ es2015 ] ] lib/index.js > task.js"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/jordalgo/ask.git"
+    "url": "https://github.com/jordalgo/task.git"
   },
   "keywords": [
     "functional",
@@ -35,7 +35,7 @@
   "author": "Jordan Rome",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/jordalgo/ask/issues"
+    "url": "https://github.com/jordalgo/task/issues"
   },
-  "homepage": "https://github.com/jordalgo/ask"
+  "homepage": "https://github.com/jordalgo/task"
 }

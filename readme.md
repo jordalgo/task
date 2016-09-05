@@ -1,48 +1,48 @@
-# Ask
+# Task
 
 A javascript data type for async requests. Very similar to the [data.task](https://github.com/folktale/data.task) and [fun-task](https://github.com/rpominov/fun-task) with some modifications.
 
 ## Example
 ```javascript
-import Ask from 'ask';
-const askMe = new Ask((left, right) => {
+import Task from 'Task';
+const task = new Task((sendFail, sendSuccess) => {
   const id = setTimeout(() => {
-    right(1);
+    sendSuccess(1);
   }, 1000);
   return () => { clearTimeout(id); };
 });
 
-const cancel = askMe.run(
-  left => {
+const cancel = task.run(
+  fail => {
     // never called;
   },
-  right => {
-    // right === 1
+  success => {
+    // success === 1
   }
 );
 ```
 
 ## Quick Details
 - The functions passed to run are always called async
-- You can't complete an Ask more than once e.g. you can't call left and then call right (an error will be thrown).
-- Functions passed to Ask can optionally create a cancel (like above) otherwise cancel will be an no-op.
-- It's lazy! The function passed on Ask creation is only called when `run` is invoked.
-- There is no error catching in an Ask! Errors are not thrown or caught from within an Ask. There are failure values (called lefts) but these are not the same thing as errors -- think of them as 'bad news'.
+- You can't complete a Task more than once e.g. you can't call sendFail and then call sendSuccess (an error will be thrown).
+- Functions passed to Task can optionally create a cancel (like above) otherwise cancel will be an no-op.
+- It's lazy! The function passed on Task creation is only called when `run` is invoked.
+- There is no error catching in this Task implementation. Errors are not thrown or caught from within a Task. There are failure values but these are not the same thing as errors -- think of them as "bad news".
 
 ## Chaining
 
 ```javascript
 function getUser(id) {
-  return new Ask((left, right) => {
-    // AJAX request to get a user
-    right ({ user });
+  return new Task((sendFail, sendSuccess) => {
+    // AJAX request to get a user with id
+    sendSuccess({ user });
   });
 }
 
 function getFollowers(username) {
-  return new Ask((left, right) => {
+  return new Task((sendFail, sendSuccess) => {
     // AJAX request using username
-    right([followers]);
+    success([followers]);
   });
 }
 
@@ -50,57 +50,55 @@ getUser()
 .map(user => user.name)
 .chain(getFollowers)
 .run(
-  left => {},
-  right => {
-    // right === [followers] (if all went well)
+  fail => {},
+  success => {
+    // success === [followers] (if all went well)
   }
 });
 ```
 
 ## Memoization
 
-A promise-like feature that allows you to hang on to values already processed within an Ask. Computations don't get re-run.
+A promise-like feature that allows you to hang on to values already processed within a Task. Computations don't get re-run.
 
 ```javascript
 var count = 0;
-const askMe = new Ask((left, right) => {
+const task = new Task((sendFail, sendSuccess) => {
   const id = setTimeout(() => {
-    right(++count);
+    sendSuccess(++count);
   }, 1000);
   return () => { clearTimeout(id); };
 });
 
-const askMeOnce = askMe.memoize();
+const taskOnce = task.memoize();
 
-askMeOnce.run(
-    () => {},
-    right => {
-      // left === null
-      // right === 1
+taskOnce.run(
+    fail => {},
+    success => {
+      // success === 1
       // count === 1
     }
 });
-askMeOnce.run(
-    () => {},
-    right => {
-      // left === null
-      // right === 1
+taskOnce.run(
+    fail => {},
+    success => {
+      // success === 1
       // count === 1
     }
 });
 ```
 
-## Parallel Asks
+## Parallel Tasks
 
-Parallelize multiple Asks. Returns an array of rights. If one of the Asks sends a left then the cancelation functions for all other Asks (not yet completed) will be called.
+Parallelize multiple Tasks. Returns an array of successs. If one of the Tasks sends a fail then the cancelation functions for all other Tasks (not yet completed) will be called.
 
 ```javascript
 var count = 0;
-function createAsk(to) {
+function createTask(to) {
   var order = ++count;
-  return new Ask(left, right => {
+  return new Task(sendFail, sendSuccess => {
     var id = setTimeout(() => {
-      right(order);
+      sendSuccess(order);
     }, to);
     return () => {
       clearTimeout(id);
@@ -108,15 +106,15 @@ function createAsk(to) {
   });
 }
 
-Ask.all([
-  createAsk(100),
-  createAsk(500),
-  createAsk(0)
+Task.all([
+  createTask(100),
+  createTask(500),
+  createTask(0)
 ]).run(
-  left => {},
-  right => {
+  fail => {},
+  success => {
     // count === 3
-    // right === [3, 1, 2]
+    // success === [3, 1, 2]
   }
 });
 ```
@@ -141,9 +139,9 @@ Task is compatible with [Fantasy Land](https://github.com/fantasyland/fantasy-la
 - [Chain](https://github.com/fantasyland/fantasy-land#chain)
 - [Monad](https://github.com/fantasyland/fantasy-land#monad)
 
-## How are Asks different than Data.Task or Fun-Task
-- Asks throw an error if you attempt to call left or right after a left or right has been called.
-- Asks offer a memoization method that allow you to treat Asks more like promises so computations dont get called more than once if multiple parts of your code call `run` on an Ask.
+## How is this Task different than Data.Task or Fun-Task
+- This Task throw an error if you attempt to call sendFail or sendSuccess if either has already been called.
+- This Task offers a memoization method that allow you to treat Tasks more like promises so computations don't get called more than once if multiple parts of your code call `run` on an Task.
 - No special or magical error catching involved.
 
 ## Credits
