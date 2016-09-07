@@ -47,8 +47,6 @@ const cancel = task.run(
 );
 ```
 
-----------------------
-
 <a name="chaining"></a>
 ## Chaining
 A chained Task waits for the first Task to finish successfully before the subsequent ones are run. If a previous Task in a chain fails then subsequent Tasks will not be run and will continue down the chain. If you would rather still call the Task producing functions on a Task failure use `bichain`, which will pass along failures to a Task producing function.
@@ -79,8 +77,6 @@ getUser()
   }
 });
 ```
-
-----------------------
 
 <a name="cancelling"></a>
 ## Cancelling
@@ -133,8 +129,6 @@ const cancel = getUser()
 // If you invoke cancel after the getUser Task has already completed, it will call the cancel function of getFollowers
 ```
 
-----------------------
-
 <a name="memoization"></a>
 ## Memoization
 A promise-like feature that allows you to hang on to values already processed within a Task. Computations don't get re-run.
@@ -165,8 +159,6 @@ taskOnce.run(
     }
 });
 ```
-
-----------------------
 
 <a name="parallel"></a>
 ## Parallel Tasks
@@ -199,8 +191,6 @@ Task.all([
 });
 ```
 
-----------------------
-
 <a name="specifications"></a>
 ## Specifications compatibility
 
@@ -222,8 +212,6 @@ Task is compatible with [Fantasy Land](https://github.com/fantasyland/fantasy-la
 - [Chain](https://github.com/fantasyland/fantasy-land#chain)
 - [Monad](https://github.com/fantasyland/fantasy-land#monad)
 
-----------------------
-
 <a name="different"></a>
 ## How is this Task different than Data.Task or Fun-Task
 - This Task throw an error if you attempt to call sendFail or sendSuccess if either has already been called.
@@ -231,8 +219,6 @@ Task is compatible with [Fantasy Land](https://github.com/fantasyland/fantasy-la
 - No special or magical error catching involved.
 
 Data.task, fun-task, and this Task are pretty similar and should be fairly interchangeable for the basics.
-
-----------------------
 
 <a name="credits"></a>
 ## Credits
