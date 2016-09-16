@@ -19,7 +19,7 @@
   "scripts": {
     "lint": "eslint test/ lib/",
     "test": "mocha -R spec test/*.js",
-    "docs": "node generate-api.js",
+    "docs": "documentation --shallow -f md build lib/task.js -o task.md",
     "build": "browserify -s task -t [ babelify --presets [ es2015 ] ] lib/index.js > task.js"
   },
   "repository": {

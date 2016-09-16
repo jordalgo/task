@@ -22,35 +22,26 @@ describe('Task', () => {
       });
     });
 
-    it('always executes the observers async', (done) => {
-      let compCalled;
-      const askMe = new Task((left, right) => {
-        right(1);
-      });
-
-      askMe.run(noop, right => {
-        assert.ok(compCalled);
-        assert.equal(right, 1);
-        done();
-      });
-      compCalled = true;
-    });
-
-    it('throws if the computation tries to complete twice', (done) => {
+    it('does not allow a computation to complete twice', (done) => {
       const askMe = new Task((left, right) => {
         right(1);
         setTimeout(() => {
-          try {
-            left('boom');
-          } catch (e) {
-            done();
-          }
+          left('boom');
         }, 100);
       });
 
-      askMe.run(noop, right => {
-        assert.equal(right, 1);
-      });
+      askMe.run(
+        () => {
+          assert.fail('Left called');
+        },
+        right => {
+          assert.equal(right, 1);
+        }
+      );
+
+      setTimeout(() => {
+        done();
+      }, 150);
     });
 
     it('run returns a cancellation function', (done) => {
@@ -70,6 +61,29 @@ describe('Task', () => {
       cancel();
       setTimeout(() => {
         assert.ok(!compCalled);
+        done();
+      }, 100);
+    });
+
+    it('wont fail or succeed if canceled before', (done) => {
+      const askMe = new Task((left) => {
+        setTimeout(() => {
+          left('boom');
+        }, 50);
+      });
+
+      const cancel = askMe.run(
+        () => {
+          assert.fail('Fail called');
+        },
+        () => {
+          assert.fail('Success called');
+        }
+      );
+
+      cancel();
+
+      setTimeout(() => {
         done();
       }, 100);
     });

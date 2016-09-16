@@ -1,6 +1,6 @@
 # Task
 
-A javascript data type for async requests. Very similar to the [data.task](https://github.com/folktale/data.task) and [fun-task](https://github.com/rpominov/fun-task) with some modifications. Published on NPM as "jordalgo-task"
+A javascript data type for async requests. Similar to [data.task](https://github.com/folktale/data.task), [fun-task](https://github.com/rpominov/fun-task), and [flutures](https://github.com/Avaq/Fluture) with some modifications. Published on NPM as "jordalgo-task"
 
 ## Installing
 ```
@@ -8,8 +8,7 @@ npm install jordalgo-task
 ```
 
 ## Quick Details
-- The functions passed to run are always called async
-- You can't complete a Task more than once e.g. you can't call sendFail and then call sendSuccess (an error will be thrown).
+- You can't complete a Task more than once e.g. you can't call sendFail and then call sendSuccess.
 - Functions passed to Task can optionally create a cancel (like above) otherwise cancel will be an no-op.
 - It's lazy! The function passed on Task creation is only called when `run` is invoked.
 - There is no error catching in this Task implementation. Errors are not thrown or caught from within a Task. There are failure values but these are not the same thing as errors -- think of them as "bad news".
@@ -29,7 +28,7 @@ npm install jordalgo-task
 <a name="simple-example"></a>
 ## Simple Example
 ```javascript
-import Task from 'Task';
+import Task from 'jordalgo-task';
 const task = new Task((sendFail, sendSuccess) => {
   const id = setTimeout(() => {
     sendSuccess(1);
