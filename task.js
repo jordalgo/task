@@ -5,25 +5,7 @@ var Task = require('./task');
 module.exports = Task;
 
 },{"./task":2}],2:[function(require,module,exports){
-(function (process){
 'use strict';
-
-/**
- * A helper for delaying the execution of a function.
- * Taken from data.task :)
- * @private
- * @summary (Any... -> Any) -> Void
- */
-var delayed = setTimeout;
-if (typeof setImmediate !== 'undefined') {
-  delayed = setImmediate;
-} else if (typeof process !== 'undefined') {
-  delayed = process.nextTick;
-}
-
-function cancelHolder() {
-  console.warn('Task: cancel called on function that did not provide a custom cancel.');
-}
 
 /**
  * The `Task[a, b]` structure represents values that depend on time. This
@@ -36,25 +18,32 @@ function cancelHolder() {
  * and rejection values handled similarly), in order to be able to compose and sequence
  * time-dependent effects using the generic and powerful monadic operations.
  *
+ * _Signature_: ((a → b) → c) → Task[a, b]
+ *
  * @class
- * @summary ((a → b) → c) → Task[a, b]
+ * @param {Function} computation
  */
 function Task(computation) {
-  this.run = function taskRun(failSub, successSub) {
-    var compCalled = false;
-    function wrapped(fn) {
-      return function (val) {
-        if (compCalled) {
-          throw new Error('Task computations can call either sendFail or sendSuccess, not both.');
-        }
-        compCalled = true;
-        delayed(function () {
-          fn(val);
-        });
-      };
+  this.run = task$run.bind(null, computation);
+}
+
+function task$run(computation, failSub, successSub) {
+  var complete = false;
+  var compCancel = computation(function task$FailSub(val) {
+    if (complete) return;
+    complete = true;
+    failSub(val);
+  }, function task$SuccessSub(val) {
+    if (complete) return;
+    complete = true;
+    successSub(val);
+  });
+  return function task$Cancel() {
+    if (complete) return;
+    complete = true;
+    if (typeof compCancel === 'function') {
+      compCancel();
     }
-    var compCancel = computation(wrapped(failSub), wrapped(successSub));
-    return typeof compCancel === 'function' ? compCancel : cancelHolder;
   };
 }
 
@@ -62,17 +51,21 @@ function Task(computation) {
  * Transforms the success value of the `Task[l, a]` using a regular unary
  * function.
  *
- * @summary ((a → b) → Task[l, a]) → Ask[l, b]
+ * _Signature_: ((a → b) → Task[l, a]) → Task[l, b]
+ *
+ * @param {Function} fn
+ * @param {Task} task
+ * @return {Task}
  */
-Task.map = function map(fn, ask) {
+Task.map = function task$map(fn, task) {
   return new Task(function (sendFail, sendSuccess) {
-    return ask.run(sendFail, function (success) {
+    return task.run(sendFail, function (success) {
       sendSuccess(fn(success));
     });
   });
 };
 
-Task.prototype.map = function _map(fn) {
+Task.prototype.map = function _task$map(fn) {
   return Task.map(fn, this);
 };
 
@@ -80,9 +73,14 @@ Task.prototype.map = function _map(fn) {
  * Transforms the fail or success values of the `Task[a, b]` using two regular unary
  * functions depending on what exists.
  *
- * @summary ((a → b), (c → d), Task[a, c]) → Task[b, d]
+ * _Signature_: ((a → b), (c → d), Task[a, c]) → Task[b, d]
+ *
+ * @param {Function} fnFail
+ * @param {Function} fnSuccess
+ * @param {Task} task
+ * @return {Task}
  */
-Task.bimap = function bimap(fnFail, fnSuccess, task) {
+Task.bimap = function task$bimap(fnFail, fnSuccess, task) {
   return new Task(function (sendFail, sendSuccess) {
     return task.run(function (fail) {
       sendFail(fnFail(fail));
@@ -92,7 +90,7 @@ Task.bimap = function bimap(fnFail, fnSuccess, task) {
   });
 };
 
-Task.prototype.bimap = function _bimap(fnFail, fnSuccess) {
+Task.prototype.bimap = function _task$bimap(fnFail, fnSuccess) {
   return Task.bimap(fnFail, fnSuccess, this);
 };
 
@@ -100,22 +98,26 @@ Task.prototype.bimap = function _bimap(fnFail, fnSuccess) {
  * Transforms the success value of the `Task[a, b]` using a function to a
  * monad.
  *
- * @summary ((b → Task[c, d]) → @Task[a, b]) → Task[a, d]
+ * _Signature_: ((b → Task[c, d]) → @Task[a, b]) → Task[a, d]
+ *
+ * @param {Function} fn
+ * @param {Task} task
+ * @return {Task}
  */
-Task.chain = function chain(fn, task) {
+Task.chain = function task$chain(fn, task) {
   return new Task(function (sendFail, sendSuccess) {
-    var futureCancel = function futureCancel() {};
+    var futureCancel = void 0;
     var cancel = task.run(sendFail, function (success) {
       futureCancel = fn(success).run(sendFail, sendSuccess);
     });
-    return function () {
+    return function task$chain$cancel() {
       cancel();
-      futureCancel();
+      if (futureCancel) futureCancel();
     };
   });
 };
 
-Task.prototype.chain = function _chain(fn) {
+Task.prototype.chain = function _task$chain(fn) {
   return Task.chain(fn, this);
 };
 
@@ -123,24 +125,29 @@ Task.prototype.chain = function _chain(fn) {
  * Passes both the fail and success values of the `Task[a, b]`
  * to a function that returns an `Task[c, d]`.
  *
- * @summary ((a → c) → (b → d) → Task[a, b]) → Task[c, d]
+ * _Signature_: ((a → c) → (b → d) → Task[a, b]) → Task[c, d]
+ *
+ * @param {Function} fnFail
+ * @param {Function} fnSuccess
+ * @param {Task} task
+ * @return {Task}
  */
-Task.bichain = function bichain(fnFail, fnSuccess, task) {
+Task.bichain = function task$bichain(fnFail, fnSuccess, task) {
   return new Task(function (sendFail, sendSuccess) {
-    var futureCancel = function futureCancel() {};
+    var futureCancel = void 0;
     var cancel = task.run(function (fail) {
       futureCancel = fnFail(fail).run(sendFail, sendSuccess);
     }, function (success) {
       futureCancel = fnSuccess(success).run(sendFail, sendSuccess);
     });
-    return function () {
+    return function task$bichain$cancel() {
       cancel();
-      futureCancel();
+      if (futureCancel) futureCancel();
     };
   });
 };
 
-Task.prototype.bichain = function _bichain(fnFail, fnSuccess) {
+Task.prototype.bichain = function _task$bichain(fnFail, fnSuccess) {
   return Task.bichain(fnFail, fnSuccess, this);
 };
 
@@ -148,9 +155,13 @@ Task.prototype.bichain = function _bichain(fnFail, fnSuccess) {
  * Applys the success value of the `Task[a, (b → c)]` to the success
  * value of the `Task[d, b]`
  *
- * @summary (Task[d, b] → Task[a, (b → c)]) → Task[a, c]
+ * _Signature_: (Task[d, b] → Task[a, (b → c)]) → Task[a, c]
+ *
+ * @param {Task} taskP
+ * @param {Task} taskZ
+ * @return {Task}
  */
-Task.ap = function ap(taskP, taskZ) {
+Task.ap = function task$ap(taskP, taskZ) {
   var pSuccess = void 0;
   var pFail = void 0;
   var zSuccess = void 0;
@@ -199,16 +210,20 @@ Task.ap = function ap(taskP, taskZ) {
   });
 };
 
-Task.prototype.ap = function _ap(taskP) {
+Task.prototype.ap = function _task$ap(taskP) {
   return Task.ap(taskP, this);
 };
 
 /**
  * Take the earlier of the two Tasks
  *
- * @summary (Task[a, b] → Task[a → b)]) → Task[a, b]
+ * _Signature_: (Task[a, b] → Task[a → b)]) → Task[a, b]
+ *
+ * @param {Task} taskA
+ * @param {Task} taskB
+ * @return {Task}
  */
-Task.concat = function concat(taskA, taskB) {
+Task.concat = function task$concat(taskA, taskB) {
   var oneFinished = void 0;
   var cancelA = void 0;
   var cancelB = void 0;
@@ -236,25 +251,28 @@ Task.concat = function concat(taskA, taskB) {
       sendSuccess(rA);
     });
     // cancel both
-    return function () {
+    return function task$concat$cancel() {
       cancelA();
       cancelB();
     };
   });
 };
 
-Task.prototype.concat = function _concat(taskA) {
+Task.prototype.concat = function _task$concat(taskA) {
   return Task.concat(taskA, this);
 };
 
 /**
- * Memoizes the fail and success values from an Task[a, b].
+ * Caches the fail and success values from an Task[a, b].
  * Run can be called multiple times on the produced Task
  * and the computation is not re-run.
  *
- * @summary Task[a, b] → Ask[a, b]
+ * _Signature_: Task[a, b] → Ask[a, b]
+ *
+ * @param {Task} task
+ * @return {Task}
  */
-Task.memoize = function memoize(task) {
+Task.cache = function task$cache(task) {
   var compCalled = false;
   var runReturned = false;
   var futureFail = void 0;
@@ -288,24 +306,20 @@ Task.memoize = function memoize(task) {
       failSubs.forEach(function (sub) {
         sub(f);
       });
-      delayed(function () {
-        failSubs = [];
-      });
+      failSubs = [];
     }, function (s) {
       runReturned = 'success';
       futureSuccess = s;
       successSubs.forEach(function (sub) {
         sub(s);
       });
-      delayed(function () {
-        successSubs = [];
-      });
+      successSubs = [];
     });
   });
 };
 
-Task.prototype.memoize = function _memoize() {
-  return Task.memoize(this);
+Task.prototype.cache = function _task$cache() {
+  return Task.cache(this);
 };
 
 /**
@@ -314,15 +328,18 @@ Task.prototype.memoize = function _memoize() {
  * `b` can be any value, including `null`, `undefined`, or another
  * `Task[a, b]` structure.
  *
- * @summary b → Task[a, b]
+ * _Signature_: b → Task[_, b]
+ *
+ * @param {*} success
+ * @return {Task}
  */
-Task.prototype.of = function of(success) {
+Task.of = function task$of(success) {
   return new Task(function (sendFail, sendSuccess) {
     sendSuccess(success);
   });
 };
 
-Task.of = Task.prototype.of;
+Task.prototype.of = Task.of;
 
 /**
  * Constructs a new `Task[a, b]` containing the single value `a`.
@@ -330,38 +347,46 @@ Task.of = Task.prototype.of;
  * `a` can be any value, including `null`, `undefined`, or another
  * `Task[a, b]` structure.
  *
- * @summary a → Task[a, b]
+ * _Signature_: a → Task[a, _]
+ *
+ * @param {*} f
+ * @return {Task}
  */
-Task.prototype.fail = function fail(f) {
+Task.fail = function task$fail(f) {
   return new Task(function (sendFail) {
     sendFail(f);
   });
 };
 
-Task.fail = Task.prototype.fail;
+Task.prototype.fail = Task.fail;
 
 /**
  * Returns an Task that will never resolve
  *
- * @summary Void → Task[_, _]
+ * _Signature_: Void → Task[_, _]
+ *
+ * @return {Task}
  */
-Task.empty = function _empty() {
+Task.empty = function task$empty() {
   return new Task(function () {});
 };
 
 Task.prototype.empty = Task.empty;
 
-Task.prototype.toString = function toString() {
+Task.prototype.toString = function task$toString() {
   return 'Task';
 };
 
 /**
  * Factory function for creating a new `Task[a, b]`
  *
- * @summary ((a → b) → c) → Task[a, b]
+ * _Signature_: ((a → b) → c) → Task[a, b]
+ *
+ * @param {Function} computation
+ * @return {Task}
  */
-Task.create = function create(comp) {
-  return new Task(comp);
+Task.create = function task$create(computation) {
+  return new Task(computation);
 };
 
 /**
@@ -369,10 +394,12 @@ Task.create = function create(comp) {
  * until each resolve with all successs or a single fail occurs.
  * Will pass the incomplete array of successs if some have occured before a fail.
  *
- * @summary [Task[a, b]] → Task[a, [b]]
-
+ * _Signature_: [Task[a, b]] → Task[a, [b]]
+ *
+ * @param {Array} taskArray
+ * @return {Task}
  */
-Task.all = function (taskArray) {
+Task.all = function task$all(taskArray) {
   var successs = [];
   var cancels = [];
   var compCalled = false;
@@ -401,7 +428,7 @@ Task.all = function (taskArray) {
         }
       });
       cancels.push(cancel);
-      return function () {
+      return function task$all$cancel() {
         cancels.forEach(function (c) {
           c();
         });
@@ -411,169 +438,6 @@ Task.all = function (taskArray) {
 };
 
 module.exports = Task;
-
-}).call(this,require('_process'))
-},{"_process":3}],3:[function(require,module,exports){
-// shim for using process in browser
-var process = module.exports = {};
-
-// cached from whatever global is present so that test runners that stub it
-// don't break things.  But we need to wrap it in a try catch in case it is
-// wrapped in strict mode code which doesn't define any globals.  It's inside a
-// function because try/catches deoptimize in certain engines.
-
-var cachedSetTimeout;
-var cachedClearTimeout;
-
-(function () {
-    try {
-        cachedSetTimeout = setTimeout;
-    } catch (e) {
-        cachedSetTimeout = function () {
-            throw new Error('setTimeout is not defined');
-        }
-    }
-    try {
-        cachedClearTimeout = clearTimeout;
-    } catch (e) {
-        cachedClearTimeout = function () {
-            throw new Error('clearTimeout is not defined');
-        }
-    }
-} ())
-function runTimeout(fun) {
-    if (cachedSetTimeout === setTimeout) {
-        //normal enviroments in sane situations
-        return setTimeout(fun, 0);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedSetTimeout(fun, 0);
-    } catch(e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
-            return cachedSetTimeout.call(null, fun, 0);
-        } catch(e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
-            return cachedSetTimeout.call(this, fun, 0);
-        }
-    }
-
-
-}
-function runClearTimeout(marker) {
-    if (cachedClearTimeout === clearTimeout) {
-        //normal enviroments in sane situations
-        return clearTimeout(marker);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedClearTimeout(marker);
-    } catch (e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
-            return cachedClearTimeout.call(null, marker);
-        } catch (e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
-            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
-            return cachedClearTimeout.call(this, marker);
-        }
-    }
-
-
-
-}
-var queue = [];
-var draining = false;
-var currentQueue;
-var queueIndex = -1;
-
-function cleanUpNextTick() {
-    if (!draining || !currentQueue) {
-        return;
-    }
-    draining = false;
-    if (currentQueue.length) {
-        queue = currentQueue.concat(queue);
-    } else {
-        queueIndex = -1;
-    }
-    if (queue.length) {
-        drainQueue();
-    }
-}
-
-function drainQueue() {
-    if (draining) {
-        return;
-    }
-    var timeout = runTimeout(cleanUpNextTick);
-    draining = true;
-
-    var len = queue.length;
-    while(len) {
-        currentQueue = queue;
-        queue = [];
-        while (++queueIndex < len) {
-            if (currentQueue) {
-                currentQueue[queueIndex].run();
-            }
-        }
-        queueIndex = -1;
-        len = queue.length;
-    }
-    currentQueue = null;
-    draining = false;
-    runClearTimeout(timeout);
-}
-
-process.nextTick = function (fun) {
-    var args = new Array(arguments.length - 1);
-    if (arguments.length > 1) {
-        for (var i = 1; i < arguments.length; i++) {
-            args[i - 1] = arguments[i];
-        }
-    }
-    queue.push(new Item(fun, args));
-    if (queue.length === 1 && !draining) {
-        runTimeout(drainQueue);
-    }
-};
-
-// v8 likes predictible objects
-function Item(fun, array) {
-    this.fun = fun;
-    this.array = array;
-}
-Item.prototype.run = function () {
-    this.fun.apply(null, this.array);
-};
-process.title = 'browser';
-process.browser = true;
-process.env = {};
-process.argv = [];
-process.version = ''; // empty string to avoid regexp issues
-process.versions = {};
-
-function noop() {}
-
-process.on = noop;
-process.addListener = noop;
-process.once = noop;
-process.off = noop;
-process.removeListener = noop;
-process.removeAllListeners = noop;
-process.emit = noop;
-
-process.binding = function (name) {
-    throw new Error('process.binding is not supported');
-};
-
-process.cwd = function () { return '/' };
-process.chdir = function (dir) {
-    throw new Error('process.chdir is not supported');
-};
-process.umask = function() { return 0; };
 
 },{}]},{},[1])(1)
 });

@@ -473,7 +473,7 @@ describe('Task', () => {
     });
   });
 
-  describe('memoize', () => {
+  describe('cache', () => {
     it('run returns the original value and does not re-run computation', (done) => {
       let called = 0;
       const askMe = new Task((left, right) => {
@@ -481,7 +481,7 @@ describe('Task', () => {
         called++;
       });
 
-      const askMeMemo = askMe.memoize();
+      const askMeMemo = askMe.cache();
 
       askMeMemo.run(noop, right => {
         assert.equal(right, 1);
@@ -511,7 +511,7 @@ describe('Task', () => {
         called++;
       });
 
-      const askMeMemo = askMe.memoize();
+      const askMeMemo = askMe.cache();
 
       askMeMemo.run(noop, right => {
         assert.equal(right, 1);
@@ -533,7 +533,7 @@ describe('Task', () => {
         called++;
       });
 
-      const askMeMemo = Task.memoize(askMe);
+      const askMeMemo = Task.cache(askMe);
 
       askMeMemo.run(noop, right => {
         assert.equal(right, 1);

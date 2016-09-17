@@ -18,9 +18,10 @@
   },
   "scripts": {
     "lint": "eslint test/ lib/",
-    "test": "mocha -R spec test/*.js",
+    "test": "mocha -R spec tests/*.js",
     "docs": "documentation --shallow -f md build lib/task.js -o task.md",
-    "build": "browserify -s task -t [ babelify --presets [ es2015 ] ] lib/index.js > task.js"
+    "browserify": "browserify -s task -t [ babelify --presets [ es2015 ] ] lib/index.js > task.js",
+    "build": "npm run test && npm run docs && npm run browserify"
   },
   "repository": {
     "type": "git",

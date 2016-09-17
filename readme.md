@@ -8,7 +8,7 @@ npm install jordalgo-task
 ```
 
 ## Quick Details
-- You can't complete a Task more than once e.g. you can't call sendFail and then call sendSuccess.
+- You can't complete a Task more than once e.g. you can't call sendFail and then call sendSuccess or cancel.
 - Functions passed to Task can optionally create a cancel (like above) otherwise cancel will be an no-op.
 - It's lazy! The function passed on Task creation is only called when `run` is invoked.
 - There is no error catching in this Task implementation. Errors are not thrown or caught from within a Task. There are failure values but these are not the same thing as errors -- think of them as "bad news".
@@ -17,7 +17,7 @@ npm install jordalgo-task
 - [Simple Example](#simple-example)
 - [Chaining](#chaining)
 - [Cancelling](#cancelling)
-- [Memoization](#memoization)
+- [Caching](#cache)
 - [Parallel Tasks](#parallel)
 - [Specifications Compatibility](#specifications)
 - [How is this Task different than Data.Task or Fun-Task](#different)
@@ -128,8 +128,8 @@ const cancel = getUser()
 // If you invoke cancel after the getUser Task has already completed, it will call the cancel function of getFollowers
 ```
 
-<a name="memoization"></a>
-## Memoization
+<a name="cache"></a>
+## Cacheing
 A promise-like feature that allows you to hang on to values already processed within a Task. Computations don't get re-run.
 
 ```javascript
@@ -141,7 +141,7 @@ const task = new Task((sendFail, sendSuccess) => {
   return () => { clearTimeout(id); };
 });
 
-const taskOnce = task.memoize();
+const taskOnce = task.cache();
 
 taskOnce.run(
     fail => {},
@@ -213,8 +213,7 @@ Task is compatible with [Fantasy Land](https://github.com/fantasyland/fantasy-la
 
 <a name="different"></a>
 ## How is this Task different than Data.Task or Fun-Task
-- This Task throw an error if you attempt to call sendFail or sendSuccess if either has already been called.
-- This Task offers a memoization method that allow you to treat Tasks more like promises so computations don't get called more than once if multiple parts of your code call `run` on an Task.
+- This Task offers a cache method that allow you to treat Tasks more like promises so computations don't get called more than once if multiple parts of your code call `run` on an Task.
 - No special or magical error catching involved.
 
 Data.task, fun-task, and this Task are pretty similar and should be fairly interchangeable for the basics.

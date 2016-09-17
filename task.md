@@ -10,6 +10,8 @@ Style form of programming or Promises (if you prefer not to have your error catc
 and rejection values handled similarly), in order to be able to compose and sequence
 time-dependent effects using the generic and powerful monadic operations.
 
+_Signature_: ((a → b) → c) → Task[a, b]
+
 **Parameters**
 
 -   `computation` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
@@ -18,6 +20,8 @@ time-dependent effects using the generic and powerful monadic operations.
 
 Transforms the success value of the `Task[l, a]` using a regular unary
 function.
+
+_Signature_: ((a → b) → Task[l, a]) → Task[l, b]
 
 **Parameters**
 
@@ -30,6 +34,8 @@ Returns **[Task](#task)**
 
 Transforms the fail or success values of the `Task[a, b]` using two regular unary
 functions depending on what exists.
+
+_Signature_: ((a → b), (c → d), Task[a, c]) → Task[b, d]
 
 **Parameters**
 
@@ -44,6 +50,8 @@ Returns **[Task](#task)**
 Transforms the success value of the `Task[a, b]` using a function to a
 monad.
 
+_Signature_: ((b → Task[c, d]) → @Task[a, b]) → Task[a, d]
+
 **Parameters**
 
 -   `fn` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
@@ -55,6 +63,8 @@ Returns **[Task](#task)**
 
 Passes both the fail and success values of the `Task[a, b]`
 to a function that returns an `Task[c, d]`.
+
+_Signature_: ((a → c) → (b → d) → Task[a, b]) → Task[c, d]
 
 **Parameters**
 
@@ -69,6 +79,8 @@ Returns **[Task](#task)**
 Applys the success value of the `Task[a, (b → c)]` to the success
 value of the `Task[d, b]`
 
+_Signature_: (Task[d, b] → Task[a, (b → c)]) → Task[a, c]
+
 **Parameters**
 
 -   `taskP` **[Task](#task)** 
@@ -80,6 +92,8 @@ Returns **[Task](#task)**
 
 Take the earlier of the two Tasks
 
+_Signature_: (Task[a, b] → Task[a → b)]) → Task[a, b]
+
 **Parameters**
 
 -   `taskA` **[Task](#task)** 
@@ -87,11 +101,13 @@ Take the earlier of the two Tasks
 
 Returns **[Task](#task)** 
 
-## memoize
+## cache
 
-Memoizes the fail and success values from an Task[a, b].
+Caches the fail and success values from an Task[a, b].
 Run can be called multiple times on the produced Task
 and the computation is not re-run.
+
+_Signature_: Task[a, b] → Ask[a, b]
 
 **Parameters**
 
@@ -106,6 +122,8 @@ Constructs a new `Task[a, b]` containing the single value `b`.
 `b` can be any value, including `null`, `undefined`, or another
 `Task[a, b]` structure.
 
+_Signature_: b → Task[_, b]
+
 **Parameters**
 
 -   `success` **Any** 
@@ -119,6 +137,8 @@ Constructs a new `Task[a, b]` containing the single value `a`.
 `a` can be any value, including `null`, `undefined`, or another
 `Task[a, b]` structure.
 
+_Signature_: a → Task[a, _]
+
 **Parameters**
 
 -   `f` **Any** 
@@ -129,11 +149,15 @@ Returns **[Task](#task)**
 
 Returns an Task that will never resolve
 
+_Signature_: Void → Task[_, _]
+
 Returns **[Task](#task)** 
 
 ## create
 
 Factory function for creating a new `Task[a, b]`
+
+_Signature_: ((a → b) → c) → Task[a, b]
 
 **Parameters**
 
@@ -146,6 +170,8 @@ Returns **[Task](#task)**
 Creates a single Task out of many that doesnt complete
 until each resolve with all successs or a single fail occurs.
 Will pass the incomplete array of successs if some have occured before a fail.
+
+_Signature_: \[Task[a, b]] → Task\[a, [b]]
 
 **Parameters**
 
