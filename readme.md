@@ -14,6 +14,7 @@ npm install jordalgo-task
 - There is no error catching in this Task implementation. Errors are not thrown or caught from within a Task. There are failure values but these are not the same thing as errors -- think of them as "bad news".
 
 ## Table of Contents
+- [API](./task.md)
 - [Simple Example](#simple-example)
 - [Chaining](#chaining)
 - [Cancelling](#cancelling)
