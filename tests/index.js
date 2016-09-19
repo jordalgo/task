@@ -5,37 +5,61 @@ const add1 = function(x) { return x + 1; };
 const noop = () => {};
 
 describe('Task', () => {
-  describe('base', () => {
+  describe('basic', () => {
     it('only runs the computation when run is called', (done) => {
       let compCalled;
-      const askMe = new Task((left, right) => {
+      const askMe = new Task((sendFail, sendSuccess) => {
         setTimeout(() => {
           compCalled = true;
-          right(1);
+          sendSuccess(1);
         }, 100);
       });
 
       assert.ok(!compCalled);
-      askMe.run(noop, right => {
-        assert.equal(right, 1);
+      askMe.run(noop, success => {
+        assert.equal(success, 1);
         done();
       });
     });
 
-    it('does not allow a computation to complete twice', (done) => {
-      const askMe = new Task((left, right) => {
-        right(1);
+    it('does not catch errors', (done) => {
+      const askMe = new Task((sendFail, sendSuccess) => {
         setTimeout(() => {
-          left('boom');
+          try {
+            sendSuccess('boom');
+          } catch (e) {
+            // the message would be "fail called" if it caught the error
+            // and sent it down the fail path
+            assert.equal(e.message, 'boom');
+            done();
+          }
+        }, 0);
+      });
+
+      askMe.run(
+        () => {
+          assert.sendFail('fail called');
+        },
+        () => {
+          throw new Error('boom');
+        }
+      );
+    });
+
+    it('does not allow a computation to complete twice', (done) => {
+      const askMe = new Task((sendFail, sendSuccess) => {
+        sendSuccess(1);
+        setTimeout(() => {
+          sendFail('boom');
         }, 100);
       });
 
       askMe.run(
         () => {
-          assert.fail('Left called');
+          assert.sendFail('fail called');
         },
-        right => {
-          assert.equal(right, 1);
+        success => {
+          assert.equal(success, 1);
         }
       );
 
@@ -46,16 +70,16 @@ describe('Task', () => {
 
     it('run returns a cancellation function', (done) => {
       let compCalled;
-      const askMe = new Task((left, right) => {
+      const askMe = new Task((sendFail, sendSuccess) => {
         const to = setTimeout(() => {
           compCalled = true;
-          right(1);
+          sendSuccess(1);
         }, 500);
         return () => { clearTimeout(to); };
       });
 
       const cancel = askMe.run(noop, () => {
-        assert.fail('Run right sub called');
+        assert.sendFail('Run success sub called');
       });
 
       cancel();
@@ -66,18 +90,18 @@ describe('Task', () => {
     });
 
     it('wont fail or succeed if canceled before', (done) => {
-      const askMe = new Task((left) => {
+      const askMe = new Task((sendFail) => {
         setTimeout(() => {
-          left('boom');
+          sendFail('boom');
         }, 50);
       });
 
       const cancel = askMe.run(
         () => {
-          assert.fail('Fail called');
+          assert.sendFail('Fail called');
         },
         () => {
-          assert.fail('Success called');
+          assert.sendFail('Success called');
         }
       );
 
@@ -91,40 +115,40 @@ describe('Task', () => {
 
   describe('map', () => {
     it('maps', (done) => {
-      const askMe = new Task((left, right) => {
-        right(1);
+      const askMe = new Task((sendFail, sendSuccess) => {
+        sendSuccess(1);
       });
 
       askMe
       .map(add1)
-      .run(noop, right => {
-        assert.equal(right, 2);
+      .run(noop, success => {
+        assert.equal(success, 2);
         done();
       });
     });
 
-    it('does not map lefts', (done) => {
-      const askMe = new Task((left) => {
-        left('boom');
+    it('does not map fails', (done) => {
+      const askMe = new Task((sendFail) => {
+        sendFail('boom');
       });
 
       askMe
       .map(add1)
       .run(
-        left => {
-          assert.equal(left, 'boom');
+        fail => {
+          assert.equal(fail, 'boom');
           done();
         },
-        () => { assert.fail(); }
+        () => { assert.sendFail(); }
       );
     });
 
     it('run returns the original cancel', (done) => {
       let compCalled;
-      const askMe = new Task((left, right) => {
+      const askMe = new Task((sendFail, sendSuccess) => {
         const to = setTimeout(() => {
           compCalled = true;
-          right(1);
+          sendSuccess(1);
         }, 100);
         return () => { clearTimeout(to); };
       });
@@ -132,7 +156,7 @@ describe('Task', () => {
       const mappedTask = askMe.map(add1);
 
       const cancel = mappedTask.run(noop, () => {
-        assert.fail('Run right sub called');
+        assert.sendFail('Run success sub called');
       });
 
       cancel();
@@ -143,46 +167,46 @@ describe('Task', () => {
     });
 
     it('is exposed as a static function', (done) => {
-      const askMe = new Task((left, right) => {
-        right(1);
+      const askMe = new Task((sendFail, sendSuccess) => {
+        sendSuccess(1);
       });
 
       Task
       .map(add1, askMe)
-      .run(noop, right => {
-        assert.equal(right, 2);
+      .run(noop, success => {
+        assert.equal(success, 2);
         done();
       });
     });
   });
 
   describe('bichain', () => {
-    it('chains for both left and right', (done) => {
-      const askMe = new Task((left) => {
-        left(2);
+    it('chains for both fail and success', (done) => {
+      const askMe = new Task((sendFail) => {
+        sendFail(2);
       });
 
-      function askAddLeft(l) {
-        return new Task((left) => {
-          left(l - 1);
+      function askAddfail(l) {
+        return new Task((sendFail) => {
+          sendFail(l - 1);
         });
       }
 
-      function askAddRight(r) {
-        return new Task((left, right) => {
-          right(r + 10);
+      function askAddsuccess(r) {
+        return new Task((sendFail, sendSuccess) => {
+          sendSuccess(r + 10);
         });
       }
 
       askMe
-      .bichain(askAddLeft, askAddRight)
+      .bichain(askAddfail, askAddsuccess)
       .run(
         l => {
           assert.equal(l, 1);
           done();
         },
         () => {
-          assert.fail('right got called');
+          assert.sendFail('success got called');
         }
       );
     });
@@ -190,17 +214,17 @@ describe('Task', () => {
     it('will recursively cancel', (done) => {
       let firstTaskComplete;
       let secondTaskCanceled;
-      const askMe = new Task((left) => {
+      const askMe = new Task((sendFail) => {
         setTimeout(() => {
           firstTaskComplete = true;
-          left(1);
+          sendFail(1);
         }, 50);
       });
 
       function askAdd(l) {
-        return new Task((left, right) => {
+        return new Task((sendFail, sendSuccess) => {
           const id = setTimeout(() => {
-            right(l + 5);
+            sendSuccess(l + 5);
           }, 100);
           return () => {
             secondTaskCanceled = true;
@@ -213,7 +237,7 @@ describe('Task', () => {
       .bichain(askAdd, noop)
       .run(
         noop,
-        assert.fail.bind(assert, 'right called')
+        assert.fail.bind(assert, 'success called')
       );
 
       setTimeout(() => {
@@ -227,31 +251,31 @@ describe('Task', () => {
     });
 
     it('is exposed as a static factory', (done) => {
-      const askMe = new Task((left) => {
-        left(2);
+      const askMe = new Task((sendFail) => {
+        sendFail(2);
       });
 
-      function askAddLeft(l) {
-        return new Task((left) => {
-          left(l - 1);
+      function askAddfail(l) {
+        return new Task((sendFail) => {
+          sendFail(l - 1);
         });
       }
 
-      function askAddRight(r) {
-        return new Task((left, right) => {
-          right(r + 10);
+      function askAddsuccess(r) {
+        return new Task((sendFail, sendSuccess) => {
+          sendSuccess(r + 10);
         });
       }
 
       Task
-      .bichain(askAddLeft, askAddRight, askMe)
+      .bichain(askAddfail, askAddsuccess, askMe)
       .run(
         l => {
           assert.equal(l, 1);
           done();
         },
         () => {
-          assert.fail('right got called');
+          assert.sendFail('success got called');
         }
       );
     });
@@ -259,47 +283,47 @@ describe('Task', () => {
 
   describe('chain', () => {
     it('chains', (done) => {
-      const askMe = new Task((left, right) => {
-        right(1);
+      const askMe = new Task((sendFail, sendSuccess) => {
+        sendSuccess(1);
       });
 
       function askAdd(r) {
-        return new Task((left, right) => {
-          right(r + 5);
+        return new Task((sendFail, sendSuccess) => {
+          sendSuccess(r + 5);
         });
       }
 
       askMe
       .chain(askAdd)
-      .run(noop, right => {
-        assert.equal(right, 6);
+      .run(noop, success => {
+        assert.equal(success, 6);
         done();
       });
     });
 
-    it('does not call the chaining ask on left', (done) => {
+    it('does not call the chaining ask on fail', (done) => {
       let askAddCalled;
-      const askMe = new Task((left) => {
-        left('boom');
+      const askMe = new Task((sendFail) => {
+        sendFail('boom');
       });
 
       function askAdd(r) {
         askAddCalled = true;
-        return new Task((left, right) => {
-          right(r + 5);
+        return new Task((sendFail, sendSuccess) => {
+          sendSuccess(r + 5);
         });
       }
 
       askMe
       .chain(askAdd)
       .run(
-        left => {
-          assert.equal(left, 'boom');
+        fail => {
+          assert.equal(fail, 'boom');
           assert.ok(!askAddCalled);
           done();
         },
         () => {
-          assert.fail('right got called');
+          assert.sendFail('success got called');
         }
       );
     });
@@ -307,17 +331,17 @@ describe('Task', () => {
     it('will recursively cancel', (done) => {
       let firstTaskComplete;
       let secondTaskCanceled;
-      const askMe = new Task((left, right) => {
+      const askMe = new Task((sendFail, sendSuccess) => {
         setTimeout(() => {
           firstTaskComplete = true;
-          right(1);
+          sendSuccess(1);
         }, 50);
       });
 
       function askAdd(r) {
-        return new Task((left, right) => {
+        return new Task((sendFail, sendSuccess) => {
           const id = setTimeout(() => {
-            right(r + 5);
+            sendSuccess(r + 5);
           }, 100);
           return () => {
             secondTaskCanceled = true;
@@ -330,7 +354,7 @@ describe('Task', () => {
       .chain(askAdd)
       .run(
         noop,
-        assert.fail.bind(assert, 'right called')
+        assert.fail.bind(assert, 'success called')
       );
 
       setTimeout(() => {
@@ -344,60 +368,60 @@ describe('Task', () => {
     });
 
     it('is exposed as a static function', (done) => {
-      const askMe = new Task((left, right) => {
-        right(1);
+      const askMe = new Task((sendFail, sendSuccess) => {
+        sendSuccess(1);
       });
 
       function askAdd(r) {
-        return new Task((left, right) => {
-          right(r + 5);
+        return new Task((sendFail, sendSuccess) => {
+          sendSuccess(r + 5);
         });
       }
 
       Task
       .chain(askAdd, askMe)
-      .run(noop, right => {
-        assert.equal(right, 6);
+      .run(noop, success => {
+        assert.equal(success, 6);
         done();
       });
     });
   });
 
   describe('ap', () => {
-    it('applies first right to passed asks right', (done) => {
-      const askMe = new Task((left, right) => {
+    it('applies first success to passed asks right', (done) => {
+      const askMe = new Task((sendFail, sendSuccess) => {
         setTimeout(() => {
-          right(add1);
+          sendSuccess(add1);
         }, 10);
       });
 
-      const askYou = new Task((left, right) => {
-        right(5);
+      const askYou = new Task((sendFail, sendSuccess) => {
+        sendSuccess(5);
       });
 
       askMe
       .ap(askYou)
-      .run(noop, right => {
-        assert.equal(right, 6);
+      .run(noop, success => {
+        assert.equal(success, 6);
         done();
       });
     });
 
     it('is exposed as a static function', (done) => {
-      const askMe = new Task((left, right) => {
+      const askMe = new Task((sendFail, sendSuccess) => {
         setTimeout(() => {
-          right(add1);
+          sendSuccess(add1);
         }, 10);
       });
 
-      const askYou = new Task((left, right) => {
-        right(5);
+      const askYou = new Task((sendFail, sendSuccess) => {
+        sendSuccess(5);
       });
 
       Task
       .ap(askYou, askMe)
-      .run(noop, right => {
-        assert.equal(right, 6);
+      .run(noop, success => {
+        assert.equal(success, 6);
         done();
       });
     });
@@ -406,9 +430,9 @@ describe('Task', () => {
   describe('concat', () => {
     it('returns the first ask that completes', (done) => {
       function createTask(to, r) {
-        return new Task((left, right) => {
+        return new Task((sendFail, sendSuccess) => {
           const id = setTimeout(() => {
-            right(r);
+            sendSuccess(r);
           }, to);
           return () => {
             clearTimeout(id);
@@ -418,8 +442,8 @@ describe('Task', () => {
 
       createTask(100, 5)
       .concat(createTask(50, 3))
-      .run(noop, right => {
-        assert.equal(right, 3);
+      .run(noop, success => {
+        assert.equal(success, 3);
         done();
       });
     });
@@ -427,9 +451,9 @@ describe('Task', () => {
     it('run returns a function that can cancel both', (done) => {
       let cancelCalled = 0;
       function createTask(to, r) {
-        return new Task((left, right) => {
+        return new Task((sendFail, sendSuccess) => {
           const id = setTimeout(() => {
-            right(r);
+            sendSuccess(r);
           }, to);
           return () => {
             cancelCalled++;
@@ -441,7 +465,7 @@ describe('Task', () => {
       const cancelBoth = createTask(100, 5)
       .concat(createTask(50, 3))
       .run(noop, () => {
-        assert.fail('message called');
+        assert.sendFail('message called');
       });
 
       cancelBoth();
@@ -454,9 +478,9 @@ describe('Task', () => {
 
     it('is exposed as a static function', (done) => {
       function createTask(to, r) {
-        return new Task((left, right) => {
+        return new Task((sendFail, sendSuccess) => {
           const id = setTimeout(() => {
-            right(r);
+            sendSuccess(r);
           }, to);
           return () => {
             clearTimeout(id);
@@ -466,8 +490,8 @@ describe('Task', () => {
 
       Task
       .concat(createTask(50, 3), createTask(100, 5))
-      .run(noop, right => {
-        assert.equal(right, 3);
+      .run(noop, success => {
+        assert.equal(success, 3);
         done();
       });
     });
@@ -476,24 +500,24 @@ describe('Task', () => {
   describe('cache', () => {
     it('run returns the original value and does not re-run computation', (done) => {
       let called = 0;
-      const askMe = new Task((left, right) => {
-        right(1);
+      const askMe = new Task((sendFail, sendSuccess) => {
+        sendSuccess(1);
         called++;
       });
 
       const askMeMemo = askMe.cache();
 
-      askMeMemo.run(noop, right => {
-        assert.equal(right, 1);
+      askMeMemo.run(noop, success => {
+        assert.equal(success, 1);
       });
 
       let secondCall = false;
 
       setTimeout(() => {
-        askMeMemo.run(noop, right => {
+        askMeMemo.run(noop, success => {
           secondCall = true;
           assert.equal(called, 1);
-          assert.equal(right, 1);
+          assert.equal(success, 1);
           done();
         });
         // make sure the second run is also always async
@@ -504,22 +528,22 @@ describe('Task', () => {
     it('notifies each run observer if the computation has not completed', (done) => {
       let called = 0;
       let runCalled = 0;
-      const askMe = new Task((left, right) => {
+      const askMe = new Task((sendFail, sendSuccess) => {
         setTimeout(() => {
-          right(1);
+          sendSuccess(1);
         }, 100);
         called++;
       });
 
       const askMeMemo = askMe.cache();
 
-      askMeMemo.run(noop, right => {
-        assert.equal(right, 1);
+      askMeMemo.run(noop, success => {
+        assert.equal(success, 1);
         runCalled++;
       });
 
-      askMeMemo.run(noop, right => {
-        assert.equal(right, 1);
+      askMeMemo.run(noop, success => {
+        assert.equal(success, 1);
         assert.equal(runCalled, 1);
         assert.equal(called, 1);
         done();
@@ -528,24 +552,24 @@ describe('Task', () => {
 
     it('is exposed as a static function', (done) => {
       let called = 0;
-      const askMe = new Task((left, right) => {
-        right(1);
+      const askMe = new Task((sendFail, sendSuccess) => {
+        sendSuccess(1);
         called++;
       });
 
       const askMeMemo = Task.cache(askMe);
 
-      askMeMemo.run(noop, right => {
-        assert.equal(right, 1);
+      askMeMemo.run(noop, success => {
+        assert.equal(success, 1);
       });
 
       let secondCall = false;
 
       setTimeout(() => {
-        askMeMemo.run(noop, right => {
+        askMeMemo.run(noop, success => {
           secondCall = true;
           assert.equal(called, 1);
-          assert.equal(right, 1);
+          assert.equal(success, 1);
           done();
         });
         // make sure the second run is also always async
@@ -559,9 +583,9 @@ describe('Task', () => {
       let count = 0;
       function createTask(to) {
         const order = ++count;
-        return new Task((left, right) => {
+        return new Task((sendFail, sendSuccess) => {
           setTimeout(() => {
-            right(order);
+            sendSuccess(order);
           }, to);
         });
       }
@@ -570,21 +594,21 @@ describe('Task', () => {
         createTask(100),
         createTask(500),
         createTask(0),
-      ]).run(noop, right => {
+      ]).run(noop, success => {
         assert.equal(count, 3);
-        assert.deepEqual(right, [3, 1, 2]);
+        assert.deepEqual(success, [3, 1, 2]);
         done();
       });
     });
 
-    it('sends the first left and cancels other asks if a left occurs', (done) => {
+    it('sends the first fail and cancels other asks if a left occurs', (done) => {
       function createTask(to, l) {
-        return new Task((left) => {
+        return new Task((sendFail) => {
           const id = setTimeout(() => {
             if (!l) {
-              assert.fail('Should have been canceled');
+              assert.sendFail('Should have been canceled');
             } else {
-              left(l);
+              sendFail(l);
             }
           }, to);
           return () => {
@@ -598,24 +622,24 @@ describe('Task', () => {
         createTask(500),
         createTask(0, 'boom'),
       ]).run(
-        left => {
-          assert.equal(left, 'boom');
+        fail => {
+          assert.equal(fail, 'boom');
           done();
         },
         () => {
-          assert.fail('right was called');
+          assert.sendFail('success was called');
         }
       );
     });
 
     it('wont throw even if proper cancel functions not returned', (done) => {
       function createTask(to, l) {
-        return new Task((left, right) => {
+        return new Task((sendFail, sendSuccess) => {
           setTimeout(() => {
             if (!l) {
-              right('uh oh');
+              sendSuccess('uh oh');
             } else {
-              left(l);
+              sendFail(l);
             }
           }, to);
         });
@@ -628,9 +652,9 @@ describe('Task', () => {
         createTask(500),
         createTask(0),
       ]).run(
-        left => {
+        fail => {
           callCount++;
-          assert.equal(left, 'boom');
+          assert.equal(fail, 'boom');
         },
         () => {
           callCount++;
