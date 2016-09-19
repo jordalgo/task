@@ -27,88 +27,94 @@ function Task(computation) {
   this.run = task$run.bind(null, computation);
 }
 
-function task$run(computation, failSub, successSub) {
+function task$run(computation, sendFail, sendSuccess) {
   var complete = false;
-  var compCancel = computation(function task$FailSub(val) {
+  var cancel = computation(function task$SendFail(val) {
     if (complete) return;
     complete = true;
-    failSub(val);
-  }, function task$SuccessSub(val) {
+    sendFail(val);
+  }, function task$SendSuccess(val) {
     if (complete) return;
     complete = true;
-    successSub(val);
+    sendSuccess(val);
   });
   return function task$Cancel() {
     if (complete) return;
     complete = true;
-    if (typeof compCancel === 'function') {
-      compCancel();
+    if (typeof cancel === 'function') {
+      cancel();
     }
   };
 }
 
 /**
- * Transforms the success value of the `Task[l, a]` using a regular unary
+ * Transforms the success value of the `Task[_, a]` using a regular unary
  * function.
  *
- * _Signature_: ((a → b) → Task[l, a]) → Task[l, b]
+ * Exposed as both a static function and a method on the Task prototype.
  *
- * @param {Function} fn
- * @param {Task} task
+ * _Signature_: ((a → b) → Task[_, a]) → Task[_, b]
+ *
+ * @param {Function} mapper
+ * @param {Task} task (pre-populated if using the prototype method)
  * @return {Task}
  */
-Task.map = function task$map(fn, task) {
+Task.map = function task$map(mapper, task) {
   return new Task(function (sendFail, sendSuccess) {
     return task.run(sendFail, function (success) {
-      sendSuccess(fn(success));
+      sendSuccess(mapper(success));
     });
   });
 };
 
-Task.prototype.map = function _task$map(fn) {
-  return Task.map(fn, this);
+Task.prototype.map = function _task$map(mapper) {
+  return Task.map(mapper, this);
 };
 
 /**
  * Transforms the fail or success values of the `Task[a, b]` using two regular unary
  * functions depending on what exists.
  *
+ * Exposed as both a static function and a method on the Task prototype.
+ *
  * _Signature_: ((a → b), (c → d), Task[a, c]) → Task[b, d]
  *
- * @param {Function} fnFail
- * @param {Function} fnSuccess
- * @param {Task} task
+ * @param {Function} mavalueFail
+ * @param {Function} mavalueSuccess
+ * @param {Task} task (pre-populated if using the prototype method)
  * @return {Task}
  */
-Task.bimap = function task$bimap(fnFail, fnSuccess, task) {
+Task.bimap = function task$bimap(mavalueFail, mavalueSuccess, task) {
   return new Task(function (sendFail, sendSuccess) {
     return task.run(function (fail) {
-      sendFail(fnFail(fail));
+      sendFail(mavalueFail(fail));
     }, function (success) {
-      sendSuccess(fnSuccess(success));
+      sendSuccess(mavalueSuccess(success));
     });
   });
 };
 
-Task.prototype.bimap = function _task$bimap(fnFail, fnSuccess) {
-  return Task.bimap(fnFail, fnSuccess, this);
+Task.prototype.bimap = function _task$bimap(mavalueFail, mavalueSuccess) {
+  return Task.bimap(mavalueFail, mavalueSuccess, this);
 };
 
 /**
  * Transforms the success value of the `Task[a, b]` using a function to a
  * monad.
  *
- * _Signature_: ((b → Task[c, d]) → @Task[a, b]) → Task[a, d]
+ * Exposed as both a static function and a method on the Task prototype.
  *
- * @param {Function} fn
- * @param {Task} task
+ * _Signature_: ((b → Task[c, d]) → @Task[a, b]) → Task[c, d]
+ *
+ * @param {Function} taskMaker
+ * @param {Task} task (pre-populated if using the prototype method)
  * @return {Task}
  */
-Task.chain = function task$chain(fn, task) {
+Task.chain = function task$chain(taskMaker, task) {
   return new Task(function (sendFail, sendSuccess) {
     var futureCancel = void 0;
     var cancel = task.run(sendFail, function (success) {
-      futureCancel = fn(success).run(sendFail, sendSuccess);
+      futureCancel = taskMaker(success).run(sendFail, sendSuccess);
     });
     return function task$chain$cancel() {
       cancel();
@@ -117,28 +123,30 @@ Task.chain = function task$chain(fn, task) {
   });
 };
 
-Task.prototype.chain = function _task$chain(fn) {
-  return Task.chain(fn, this);
+Task.prototype.chain = function _task$chain(taskMaker) {
+  return Task.chain(taskMaker, this);
 };
 
 /**
  * Passes both the fail and success values of the `Task[a, b]`
- * to a function that returns an `Task[c, d]`.
+ * to a function that returns an `Task[d, e]`.
  *
- * _Signature_: ((a → c) → (b → d) → Task[a, b]) → Task[c, d]
+ * Exposed as both a static function and a method on the Task prototype.
  *
- * @param {Function} fnFail
- * @param {Function} fnSuccess
- * @param {Task} task
+ * _Signature_: (a → Task[d, e]) → (b → Task[d, e]) → Task[d, e]
+ *
+ * @param {Function} taskMakerOnFail
+ * @param {Function} taskMakerOnSuccess
+ * @param {Task} task (pre-populated if using the prototype method)
  * @return {Task}
  */
-Task.bichain = function task$bichain(fnFail, fnSuccess, task) {
+Task.bichain = function task$bichain(taskMakerOnFail, taskMakerOnSuccess, task) {
   return new Task(function (sendFail, sendSuccess) {
     var futureCancel = void 0;
     var cancel = task.run(function (fail) {
-      futureCancel = fnFail(fail).run(sendFail, sendSuccess);
+      futureCancel = taskMakerOnFail(fail).run(sendFail, sendSuccess);
     }, function (success) {
-      futureCancel = fnSuccess(success).run(sendFail, sendSuccess);
+      futureCancel = taskMakerOnSuccess(success).run(sendFail, sendSuccess);
     });
     return function task$bichain$cancel() {
       cancel();
@@ -147,60 +155,62 @@ Task.bichain = function task$bichain(fnFail, fnSuccess, task) {
   });
 };
 
-Task.prototype.bichain = function _task$bichain(fnFail, fnSuccess) {
-  return Task.bichain(fnFail, fnSuccess, this);
+Task.prototype.bichain = function _task$bichain(taskMakerOnFail, taskMakerOnSuccess) {
+  return Task.bichain(taskMakerOnFail, taskMakerOnSuccess, this);
 };
 
 /**
- * Applys the success value of the `Task[a, (b → c)]` to the success
+ * Applys the success value of the `Task[_, (b → c)]` to the success
  * value of the `Task[d, b]`
  *
- * _Signature_: (Task[d, b] → Task[a, (b → c)]) → Task[a, c]
+ * Exposed as both a static function and a method on the Task prototype.
  *
- * @param {Task} taskP
- * @param {Task} taskZ
+ * _Signature_: (Task[d, b] → Task[_, (b → c)]) → Task[_, c]
+ *
+ * @param {Task} taskValue
+ * @param {Task} taskFunction (pre-populated if using the prototype method)
  * @return {Task}
  */
-Task.ap = function task$ap(taskP, taskZ) {
-  var pSuccess = void 0;
-  var pFail = void 0;
-  var zSuccess = void 0;
-  var zFail = void 0;
+Task.ap = function task$ap(taskValue, taskFunction) {
+  var valueSuccess = void 0;
+  var valueFail = void 0;
+  var functionSuccess = void 0;
+  var functionFail = void 0;
   var completed = void 0;
 
   function runApply(sendFail, sendSuccess) {
     if (sendFail) {
-      sendFail(zFail || pFail);
+      sendFail(functionFail || valueFail);
     } else {
-      sendSuccess(zSuccess(pSuccess));
+      sendSuccess(functionSuccess(valueSuccess));
     }
   }
 
   return new Task(function (sendFail, sendSuccess) {
-    taskP.run(function (fP) {
-      pFail = fP;
+    taskValue.run(function (fail) {
+      valueFail = fail;
       if (completed) {
         runApply(sendFail, null);
       } else {
         completed = true;
       }
-    }, function (sP) {
-      pSuccess = sP;
+    }, function (success) {
+      valueSuccess = success;
       if (completed) {
         runApply(null, sendSuccess);
       } else {
         completed = true;
       }
     });
-    return taskZ.run(function (fZ) {
-      zFail = fZ;
+    return taskFunction.run(function (fail) {
+      functionFail = fail;
       if (completed) {
         runApply(sendFail, null);
       } else {
         completed = true;
       }
-    }, function (sZ) {
-      zSuccess = sZ;
+    }, function (success) {
+      functionSuccess = success;
       if (completed) {
         runApply(null, sendSuccess);
       } else {
@@ -210,17 +220,19 @@ Task.ap = function task$ap(taskP, taskZ) {
   });
 };
 
-Task.prototype.ap = function _task$ap(taskP) {
-  return Task.ap(taskP, this);
+Task.prototype.ap = function _task$ap(taskValue) {
+  return Task.ap(taskValue, this);
 };
 
 /**
  * Take the earlier of the two Tasks
  *
+ * Exposed as both a static function and a method on the Task prototype.
+ *
  * _Signature_: (Task[a, b] → Task[a → b)]) → Task[a, b]
  *
  * @param {Task} taskA
- * @param {Task} taskB
+ * @param {Task} taskB (pre-populated if using the prototype method)
  * @return {Task}
  */
 Task.concat = function task$concat(taskA, taskB) {
@@ -228,27 +240,27 @@ Task.concat = function task$concat(taskA, taskB) {
   var cancelA = void 0;
   var cancelB = void 0;
   return new Task(function (sendFail, sendSuccess) {
-    cancelA = taskA.run(function (lA) {
+    cancelA = taskA.run(function (fail) {
       if (oneFinished) return;
       oneFinished = true;
       cancelB();
-      sendFail(lA);
-    }, function (rA) {
+      sendFail(fail);
+    }, function (success) {
       if (oneFinished) return;
       oneFinished = true;
       cancelB();
-      sendSuccess(rA);
+      sendSuccess(success);
     });
-    cancelB = taskB.run(function (lA) {
+    cancelB = taskB.run(function (fail) {
       if (oneFinished) return;
       oneFinished = true;
       cancelA();
-      sendFail(lA);
-    }, function (rA) {
+      sendFail(fail);
+    }, function (success) {
       if (oneFinished) return;
       oneFinished = true;
       cancelA();
-      sendSuccess(rA);
+      sendSuccess(success);
     });
     // cancel both
     return function task$concat$cancel() {
@@ -267,9 +279,11 @@ Task.prototype.concat = function _task$concat(taskA) {
  * Run can be called multiple times on the produced Task
  * and the computation is not re-run.
  *
- * _Signature_: Task[a, b] → Ask[a, b]
+ * Exposed as both a static function and a method on the Task prototype.
  *
- * @param {Task} task
+ * _Signature_: Task[a, b] → Task[a, b]
+ *
+ * @param {Task} task (pre-populated if using the prototype method)
  * @return {Task}
  */
 Task.cache = function task$cache(task) {
@@ -300,18 +314,18 @@ Task.cache = function task$cache(task) {
     compCalled = true;
     successSubs.push(sendSuccess);
     failSubs.push(sendFail);
-    return task.run(function (f) {
+    return task.run(function (fail) {
       runReturned = 'fail';
-      futureFail = f;
+      futureFail = fail;
       failSubs.forEach(function (sub) {
-        sub(f);
+        sub(fail);
       });
       failSubs = [];
-    }, function (s) {
+    }, function (success) {
       runReturned = 'success';
-      futureSuccess = s;
+      futureSuccess = success;
       successSubs.forEach(function (sub) {
-        sub(s);
+        sub(success);
       });
       successSubs = [];
     });
@@ -323,10 +337,12 @@ Task.prototype.cache = function _task$cache() {
 };
 
 /**
- * Constructs a new `Task[a, b]` containing the single value `b`.
+ * Constructs a new `Task[_, b]` containing the single success value `b`.
  *
  * `b` can be any value, including `null`, `undefined`, or another
  * `Task[a, b]` structure.
+ *
+ * Exposed as both a static function and a method on the Task prototype.
  *
  * _Signature_: b → Task[_, b]
  *
@@ -342,19 +358,21 @@ Task.of = function task$of(success) {
 Task.prototype.of = Task.of;
 
 /**
- * Constructs a new `Task[a, b]` containing the single value `a`.
+ * Constructs a new `Task[a, _]` containing the single fail value `a`.
  *
  * `a` can be any value, including `null`, `undefined`, or another
  * `Task[a, b]` structure.
  *
+ * Exposed as both a static function and a method on the Task prototype.
+ *
  * _Signature_: a → Task[a, _]
  *
- * @param {*} f
+ * @param {*} fail
  * @return {Task}
  */
-Task.fail = function task$fail(f) {
+Task.fail = function task$fail(fail) {
   return new Task(function (sendFail) {
-    sendFail(f);
+    sendFail(fail);
   });
 };
 
@@ -362,6 +380,8 @@ Task.prototype.fail = Task.fail;
 
 /**
  * Returns an Task that will never resolve
+ *
+ * Exposed as both a static function and a method on the Task prototype.
  *
  * _Signature_: Void → Task[_, _]
  *

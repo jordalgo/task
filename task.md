@@ -18,15 +18,17 @@ _Signature_: ((a → b) → c) → Task[a, b]
 
 ## map
 
-Transforms the success value of the `Task[l, a]` using a regular unary
+Transforms the success value of the `Task[_, a]` using a regular unary
 function.
 
-_Signature_: ((a → b) → Task[l, a]) → Task[l, b]
+Exposed as both a static function and a method on the Task prototype.
+
+_Signature_: ((a → b) → Task[_, a]) → Task[_, b]
 
 **Parameters**
 
--   `fn` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
--   `task` **[Task](#task)** 
+-   `mapper` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
+-   `task` **[Task](#task)** (pre-populated if using the prototype method)
 
 Returns **[Task](#task)** 
 
@@ -35,13 +37,15 @@ Returns **[Task](#task)**
 Transforms the fail or success values of the `Task[a, b]` using two regular unary
 functions depending on what exists.
 
+Exposed as both a static function and a method on the Task prototype.
+
 _Signature_: ((a → b), (c → d), Task[a, c]) → Task[b, d]
 
 **Parameters**
 
--   `fnFail` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
--   `fnSuccess` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
--   `task` **[Task](#task)** 
+-   `mavalueFail` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
+-   `mavalueSuccess` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
+-   `task` **[Task](#task)** (pre-populated if using the prototype method)
 
 Returns **[Task](#task)** 
 
@@ -50,41 +54,47 @@ Returns **[Task](#task)**
 Transforms the success value of the `Task[a, b]` using a function to a
 monad.
 
-_Signature_: ((b → Task[c, d]) → @Task[a, b]) → Task[a, d]
+Exposed as both a static function and a method on the Task prototype.
+
+_Signature_: ((b → Task[c, d]) → @Task[a, b]) → Task[c, d]
 
 **Parameters**
 
--   `fn` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
--   `task` **[Task](#task)** 
+-   `taskMaker` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
+-   `task` **[Task](#task)** (pre-populated if using the prototype method)
 
 Returns **[Task](#task)** 
 
 ## bichain
 
 Passes both the fail and success values of the `Task[a, b]`
-to a function that returns an `Task[c, d]`.
+to a function that returns an `Task[d, e]`.
 
-_Signature_: ((a → c) → (b → d) → Task[a, b]) → Task[c, d]
+Exposed as both a static function and a method on the Task prototype.
+
+_Signature_: (a → Task[d, e]) → (b → Task[d, e]) → Task[d, e]
 
 **Parameters**
 
--   `fnFail` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
--   `fnSuccess` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
--   `task` **[Task](#task)** 
+-   `taskMakerOnFail` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
+-   `taskMakerOnSuccess` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
+-   `task` **[Task](#task)** (pre-populated if using the prototype method)
 
 Returns **[Task](#task)** 
 
 ## ap
 
-Applys the success value of the `Task[a, (b → c)]` to the success
+Applys the success value of the `Task[_, (b → c)]` to the success
 value of the `Task[d, b]`
 
-_Signature_: (Task[d, b] → Task[a, (b → c)]) → Task[a, c]
+Exposed as both a static function and a method on the Task prototype.
+
+_Signature_: (Task[d, b] → Task[_, (b → c)]) → Task[_, c]
 
 **Parameters**
 
--   `taskP` **[Task](#task)** 
--   `taskZ` **[Task](#task)** 
+-   `taskValue` **[Task](#task)** 
+-   `taskFunction` **[Task](#task)** (pre-populated if using the prototype method)
 
 Returns **[Task](#task)** 
 
@@ -92,12 +102,14 @@ Returns **[Task](#task)**
 
 Take the earlier of the two Tasks
 
+Exposed as both a static function and a method on the Task prototype.
+
 _Signature_: (Task[a, b] → Task[a → b)]) → Task[a, b]
 
 **Parameters**
 
 -   `taskA` **[Task](#task)** 
--   `taskB` **[Task](#task)** 
+-   `taskB` **[Task](#task)** (pre-populated if using the prototype method)
 
 Returns **[Task](#task)** 
 
@@ -107,20 +119,24 @@ Caches the fail and success values from an Task[a, b].
 Run can be called multiple times on the produced Task
 and the computation is not re-run.
 
-_Signature_: Task[a, b] → Ask[a, b]
+Exposed as both a static function and a method on the Task prototype.
+
+_Signature_: Task[a, b] → Task[a, b]
 
 **Parameters**
 
--   `task` **[Task](#task)** 
+-   `task` **[Task](#task)** (pre-populated if using the prototype method)
 
 Returns **[Task](#task)** 
 
 ## of
 
-Constructs a new `Task[a, b]` containing the single value `b`.
+Constructs a new `Task[_, b]` containing the single success value `b`.
 
 `b` can be any value, including `null`, `undefined`, or another
 `Task[a, b]` structure.
+
+Exposed as both a static function and a method on the Task prototype.
 
 _Signature_: b → Task[_, b]
 
@@ -132,22 +148,26 @@ Returns **[Task](#task)**
 
 ## fail
 
-Constructs a new `Task[a, b]` containing the single value `a`.
+Constructs a new `Task[a, _]` containing the single fail value `a`.
 
 `a` can be any value, including `null`, `undefined`, or another
 `Task[a, b]` structure.
+
+Exposed as both a static function and a method on the Task prototype.
 
 _Signature_: a → Task[a, _]
 
 **Parameters**
 
--   `f` **Any** 
+-   `fail` **Any** 
 
 Returns **[Task](#task)** 
 
 ## empty
 
 Returns an Task that will never resolve
+
+Exposed as both a static function and a method on the Task prototype.
 
 _Signature_: Void → Task[_, _]
 
