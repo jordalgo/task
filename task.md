@@ -1,4 +1,4 @@
-# TYPEOF_TASK
+# Task
 
 The `Task[a, b]` structure represents values that depend on time. This
 allows one to model time-based effects explicitly, such that one can have
@@ -10,9 +10,6 @@ Style form of programming or Promises (if you prefer not to have your error catc
 and rejection values handled similarly), in order to be able to compose and sequence
 time-dependent effects using the generic and powerful monadic operations.
 
-# Task
-
-Constructor
 _Signature_: ((a → b) → c → void) → Task[a, b]
 
 **Parameters**
@@ -211,11 +208,3 @@ otherwise checker.check is a noop
 
 Disable type checking for Task methods.
 Disabled by default.
-
-# isTask
-
-Task's optional type checking
-
-**Parameters**
-
--   `m`  
