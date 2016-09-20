@@ -9,11 +9,14 @@
     "space-before-function-paren": 0,
     "no-console": 0,
     "dot-notation": 0,
-    "prefer-arrow-callback": 0
+    "prefer-arrow-callback": 0,
+    "max-len": 0
   },
   "globals": {
     "describe": true,
     "it": true,
-    "xit": true
+    "xit": true,
+    "before": true,
+    "after": true
   }
 }

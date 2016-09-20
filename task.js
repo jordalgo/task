@@ -7,6 +7,8 @@ module.exports = Task;
 },{"./task":2}],2:[function(require,module,exports){
 'use strict';
 
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
+
 /**
  * The `Task[a, b]` structure represents values that depend on time. This
  * allows one to model time-based effects explicitly, such that one can have
@@ -17,19 +19,32 @@ module.exports = Task;
  * Style form of programming or Promises (if you prefer not to have your error catching
  * and rejection values handled similarly), in order to be able to compose and sequence
  * time-dependent effects using the generic and powerful monadic operations.
- *
- * _Signature_: ((a → b) → c) → Task[a, b]
+ */
+
+var TYPEOF_TASK = 'jordalgo/task';
+
+var checker = {
+  check: function check() {}
+};
+
+/**
+ * Constructor
+ * _Signature_: ((a → b) → c → void) → Task[a, b]
  *
  * @class
  * @param {Function} computation
  */
 function Task(computation) {
-  this.run = task$run.bind(null, computation);
+  checker.check('create', computation);
+  this.computation = computation;
 }
 
-function task$run(computation, sendFail, sendSuccess) {
+Task.prototype['@@type'] = TYPEOF_TASK;
+
+Task.prototype.run = function task$run(sendFail, sendSuccess) {
+  checker.check('run', sendFail, sendSuccess);
   var complete = false;
-  var cancel = computation(function task$SendFail(val) {
+  var cancel = this.computation(function task$SendFail(val) {
     if (complete) return;
     complete = true;
     sendFail(val);
@@ -45,7 +60,7 @@ function task$run(computation, sendFail, sendSuccess) {
       cancel();
     }
   };
-}
+};
 
 /**
  * Transforms the success value of the `Task[_, a]` using a regular unary
@@ -60,6 +75,7 @@ function task$run(computation, sendFail, sendSuccess) {
  * @return {Task}
  */
 Task.map = function task$map(mapper, task) {
+  checker.check('map', mapper, task);
   return new Task(function (sendFail, sendSuccess) {
     return task.run(sendFail, function (success) {
       sendSuccess(mapper(success));
@@ -79,17 +95,18 @@ Task.prototype.map = function _task$map(mapper) {
  *
  * _Signature_: ((a → b), (c → d), Task[a, c]) → Task[b, d]
  *
- * @param {Function} mavalueFail
- * @param {Function} mavalueSuccess
+ * @param {Function} mapValueFail
+ * @param {Function} mapValueSuccess
  * @param {Task} task (pre-populated if using the prototype method)
  * @return {Task}
  */
-Task.bimap = function task$bimap(mavalueFail, mavalueSuccess, task) {
+Task.bimap = function task$bimap(mapValueFail, mapValueSuccess, task) {
+  checker.check('bimap', mapValueFail, mapValueSuccess, task);
   return new Task(function (sendFail, sendSuccess) {
     return task.run(function (fail) {
-      sendFail(mavalueFail(fail));
+      sendFail(mapValueFail(fail));
     }, function (success) {
-      sendSuccess(mavalueSuccess(success));
+      sendSuccess(mapValueSuccess(success));
     });
   });
 };
@@ -111,6 +128,7 @@ Task.prototype.bimap = function _task$bimap(mavalueFail, mavalueSuccess) {
  * @return {Task}
  */
 Task.chain = function task$chain(taskMaker, task) {
+  checker.check('chain', taskMaker, task);
   return new Task(function (sendFail, sendSuccess) {
     var futureCancel = void 0;
     var cancel = task.run(sendFail, function (success) {
@@ -141,6 +159,7 @@ Task.prototype.chain = function _task$chain(taskMaker) {
  * @return {Task}
  */
 Task.bichain = function task$bichain(taskMakerOnFail, taskMakerOnSuccess, task) {
+  checker.check('bichain', taskMakerOnFail, taskMakerOnSuccess, task);
   return new Task(function (sendFail, sendSuccess) {
     var futureCancel = void 0;
     var cancel = task.run(function (fail) {
@@ -172,6 +191,7 @@ Task.prototype.bichain = function _task$bichain(taskMakerOnFail, taskMakerOnSucc
  * @return {Task}
  */
 Task.ap = function task$ap(taskValue, taskFunction) {
+  checker.check('ap', taskValue, taskFunction);
   var valueSuccess = void 0;
   var valueFail = void 0;
   var functionSuccess = void 0;
@@ -236,6 +256,7 @@ Task.prototype.ap = function _task$ap(taskValue) {
  * @return {Task}
  */
 Task.concat = function task$concat(taskA, taskB) {
+  checker.check('concat', taskA, taskB);
   var oneFinished = void 0;
   var cancelA = void 0;
   var cancelB = void 0;
@@ -287,6 +308,7 @@ Task.prototype.concat = function _task$concat(taskA) {
  * @return {Task}
  */
 Task.cache = function task$cache(task) {
+  checker.check('cache', task);
   var compCalled = false;
   var runReturned = false;
   var futureFail = void 0;
@@ -455,6 +477,85 @@ Task.all = function task$all(taskArray) {
       };
     });
   });
+};
+
+/**
+ * Task's optional type checking
+ */
+
+function isTask(m) {
+  return m instanceof Task || Boolean(m) && m['@@type'] === TYPEOF_TASK;
+}
+
+function isFunction(f) {
+  return typeof f === 'function';
+}
+
+function error$invalidArg(method, order, expected, param) {
+  throw new TypeError('Task$' + method + ' expects the ' + order + ' argument to be a ' + expected + '. Got a ' + (typeof param === 'undefined' ? 'undefined' : _typeof(param)));
+}
+
+var methods = {
+  create: function create(method, params) {
+    if (!isFunction(params[0])) error$invalidArg(method, 'first', 'function', params[0]);
+  },
+  run: function run(method, params) {
+    if (!isFunction(params[0])) error$invalidArg(method, 'first', 'function', params[0]);
+    if (!isFunction(params[1])) error$invalidArg(method, 'second', 'function', params[1]);
+  },
+  map: function map(method, params) {
+    if (!isFunction(params[0])) error$invalidArg(method, 'first', 'function', params[0]);
+    if (!isTask(params[1])) error$invalidArg(method, 'second', 'Task', params[1]);
+  },
+  bimap: function bimap(method, params) {
+    if (!isFunction(params[0])) error$invalidArg(method, 'first', 'function', params[0]);
+    if (!isFunction(params[1])) error$invalidArg(method, 'second', 'function', params[1]);
+    if (!isTask(params[2])) error$invalidArg(method, 'third', 'Task', params[2]);
+  },
+  chain: function chain(method, params) {
+    if (!isFunction(params[0])) error$invalidArg(method, 'first', 'function', params[0]);
+    if (!isTask(params[1])) error$invalidArg(method, 'second', 'Task', params[1]);
+  },
+  bichain: function bichain(method, params) {
+    if (!isFunction(params[0])) error$invalidArg(method, 'first', 'function', params[0]);
+    if (!isFunction(params[1])) error$invalidArg(method, 'second', 'function', params[1]);
+    if (!isTask(params[2])) error$invalidArg(method, 'third', 'Task', params[2]);
+  },
+  ap: function ap(method, params) {
+    if (!isTask(params[0])) error$invalidArg(method, 'first', 'Task', params[0]);
+    if (!isTask(params[1])) error$invalidArg(method, 'second', 'Task', params[1]);
+  },
+  concat: function concat(method, params) {
+    if (!isTask(params[0])) error$invalidArg(method, 'first', 'Task', params[0]);
+    if (!isTask(params[1])) error$invalidArg(method, 'second', 'Task', params[1]);
+  },
+  cache: function cache(method, params) {
+    if (!isTask(params[0])) error$invalidArg(method, 'first', 'Task', params[0]);
+  }
+};
+
+function checkType(method) {
+  for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+    args[_key - 1] = arguments[_key];
+  }
+
+  methods[method](method, args);
+}
+
+/**
+ * Enable type checking for Task methods,
+ * otherwise checker.check is a noop
+ */
+Task.checkingOn = function () {
+  checker.check = checkType;
+};
+
+/**
+ * Disable type checking for Task methods.
+ * Disabled by default.
+ */
+Task.checkingOff = function () {
+  checker.check = function () {};
 };
 
 module.exports = Task;

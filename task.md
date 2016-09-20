@@ -1,4 +1,4 @@
-# Task
+# TYPEOF_TASK
 
 The `Task[a, b]` structure represents values that depend on time. This
 allows one to model time-based effects explicitly, such that one can have
@@ -10,7 +10,10 @@ Style form of programming or Promises (if you prefer not to have your error catc
 and rejection values handled similarly), in order to be able to compose and sequence
 time-dependent effects using the generic and powerful monadic operations.
 
-_Signature_: ((a → b) → c) → Task[a, b]
+# Task
+
+Constructor
+_Signature_: ((a → b) → c → void) → Task[a, b]
 
 **Parameters**
 
@@ -43,8 +46,8 @@ _Signature_: ((a → b), (c → d), Task[a, c]) → Task[b, d]
 
 **Parameters**
 
--   `mavalueFail` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
--   `mavalueSuccess` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
+-   `mapValueFail` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
+-   `mapValueSuccess` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
 -   `task` **[Task](#task)** (pre-populated if using the prototype method)
 
 Returns **[Task](#task)** 
@@ -198,3 +201,21 @@ _Signature_: \[Task[a, b]] → Task\[a, [b]]
 -   `taskArray` **[Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)** 
 
 Returns **[Task](#task)** 
+
+## checkingOn
+
+Enable type checking for Task methods,
+otherwise checker.check is a noop
+
+## checkingOff
+
+Disable type checking for Task methods.
+Disabled by default.
+
+# isTask
+
+Task's optional type checking
+
+**Parameters**
+
+-   `m`  
