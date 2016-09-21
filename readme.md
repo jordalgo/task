@@ -12,6 +12,7 @@ npm install jordalgo-task
 - Functions passed to Task can optionally create a cancel (like above) otherwise cancel will be an no-op.
 - It's lazy! The function passed on Task creation is only called when `run` is invoked.
 - There is no error catching in this Task implementation. Errors are not thrown or caught from within a Task. There are failure values but these are not the same thing as errors -- think of them as "bad news".
+- Type checking is optional. Turn on type-checking in dev mode by called `Task.checkingOn();`.
 
 ## Table of Contents
 - [API](./task.md)
