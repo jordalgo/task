@@ -5,16 +5,6 @@ const add1 = function(x) { return x + 1; };
 const noop = () => {};
 
 describe('Task', () => {
-  before(() => {
-    // make sure this runs with type checking on
-    // no risk in it running while off.
-    Task.checkingOn();
-  });
-
-  after(() => {
-    Task.checkingOff();
-  });
-
   describe('basic', () => {
     it('only runs the computation when run is called', (done) => {
       let compCalled;

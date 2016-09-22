@@ -14,14 +14,17 @@
     "eslint-plugin-import": "^1.14.0",
     "eslint-plugin-jsx-a11y": "^2.2.0",
     "eslint-plugin-react": "^6.2.0",
-    "mocha": "^2.2.1"
+    "mocha": "^2.2.1",
+    "uglify-js": "^2.7.3"
   },
   "scripts": {
     "lint": "eslint test/ lib/",
+    "uglify": "uglifyjs -m -r 'require,exports' -c conditionals,booleans,if_return,collapse_vars task.js -o task.js",
     "test": "mocha -R spec tests/*.js",
     "docs": "documentation --shallow -f md build lib/task.js -o task.md",
     "browserify": "browserify -s task -t [ babelify --presets [ es2015 ] ] lib/index.js > task.js",
-    "build": "npm run test && npm run docs && npm run browserify"
+    "build": "npm run browserify && npm run uglify",
+    "pre-merge": "npm run test && npm run docs && npm run build"
   },
   "repository": {
     "type": "git",

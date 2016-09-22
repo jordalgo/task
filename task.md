@@ -15,6 +15,8 @@ _Signature_: ((a → b) → c → void) → Task[a, b]
 **Parameters**
 
 -   `computation` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
+-   `unSafe` **[Boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** (private)
+-   `safe`  
 
 ## map
 
@@ -28,7 +30,6 @@ _Signature_: ((a → b) → Task[_, a]) → Task[_, b]
 **Parameters**
 
 -   `mapper` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
--   `task` **[Task](#task)** (pre-populated if using the prototype method)
 
 Returns **[Task](#task)** 
 
@@ -45,7 +46,6 @@ _Signature_: ((a → b), (c → d), Task[a, c]) → Task[b, d]
 
 -   `mapValueFail` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
 -   `mapValueSuccess` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
--   `task` **[Task](#task)** (pre-populated if using the prototype method)
 
 Returns **[Task](#task)** 
 
@@ -61,7 +61,6 @@ _Signature_: ((b → Task[c, d]) → @Task[a, b]) → Task[c, d]
 **Parameters**
 
 -   `taskMaker` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
--   `task` **[Task](#task)** (pre-populated if using the prototype method)
 
 Returns **[Task](#task)** 
 
@@ -78,14 +77,14 @@ _Signature_: (a → Task[d, e]) → (b → Task[d, e]) → Task[d, e]
 
 -   `taskMakerOnFail` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
 -   `taskMakerOnSuccess` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
--   `task` **[Task](#task)** (pre-populated if using the prototype method)
 
 Returns **[Task](#task)** 
 
 ## ap
 
 Applys the success value of the `Task[_, (b → c)]` to the success
-value of the `Task[d, b]`
+value of the `Task[d, b]`. Fails with the first failure
+and throws the second away if it occurs.
 
 Exposed as both a static function and a method on the Task prototype.
 
@@ -94,7 +93,6 @@ _Signature_: (Task[d, b] → Task[_, (b → c)]) → Task[_, c]
 **Parameters**
 
 -   `taskValue` **[Task](#task)** 
--   `taskFunction` **[Task](#task)** (pre-populated if using the prototype method)
 
 Returns **[Task](#task)** 
 
@@ -109,7 +107,6 @@ _Signature_: (Task[a, b] → Task[a → b)]) → Task[a, b]
 **Parameters**
 
 -   `taskA` **[Task](#task)** 
--   `taskB` **[Task](#task)** (pre-populated if using the prototype method)
 
 Returns **[Task](#task)** 
 
@@ -122,10 +119,6 @@ and the computation is not re-run.
 Exposed as both a static function and a method on the Task prototype.
 
 _Signature_: Task[a, b] → Task[a, b]
-
-**Parameters**
-
--   `task` **[Task](#task)** (pre-populated if using the prototype method)
 
 Returns **[Task](#task)** 
 
@@ -173,11 +166,9 @@ _Signature_: Void → Task[_, _]
 
 Returns **[Task](#task)** 
 
-## create
+# TaskMaker
 
-Factory function for creating a new `Task[a, b]`
-
-_Signature_: ((a → b) → c) → Task[a, b]
+Exported Factory function for Tasks
 
 **Parameters**
 
@@ -198,13 +189,3 @@ _Signature_: \[Task[a, b]] → Task\[a, [b]]
 -   `taskArray` **[Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array)** 
 
 Returns **[Task](#task)** 
-
-## checkingOn
-
-Enable type checking for Task methods,
-otherwise checker.check is a noop
-
-## checkingOff
-
-Disable type checking for Task methods.
-Disabled by default.
