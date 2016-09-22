@@ -594,6 +594,24 @@ describe('Task', () => {
     });
   });
 
+  describe('callback', () => {
+    it('runs the computation and passes fail as the first arg', () => {
+      Task.fail('boom')
+      .callback((fail, success) => {
+        assert.equal(fail, 'boom');
+        assert.ok(!success);
+      });
+    });
+
+    it('runs the computation and passes success as the second arg', () => {
+      Task.of('hello')
+      .callback((fail, success) => {
+        assert.ok(!fail);
+        assert.equal(success, 'hello');
+      });
+    });
+  });
+
   describe('all', () => {
     it('does not notify until all Tasks are completed', (done) => {
       let count = 0;
