@@ -30,8 +30,8 @@ npm install jordalgo-task
 <a name="simple-example"></a>
 ## Simple Example
 ```javascript
-import Task from 'jordalgo-task';
-const task = new Task((sendFail, sendSuccess) => {
+import TaskMaker from 'jordalgo-task';
+const task = TaskMaker((sendFail, sendSuccess) => {
   const id = setTimeout(() => {
     sendSuccess(1);
   }, 1000);
@@ -54,7 +54,7 @@ A chained Task waits for the first Task to finish successfully before the subseq
 
 ```javascript
 function getUser(id) {
-  return new Task((sendFail, sendSuccess) => {
+  return TaskMaker((sendFail, sendSuccess) => {
     // AJAX request to get a user with id
     sendSuccess({ user });
   });
@@ -62,7 +62,7 @@ function getUser(id) {
 
 // will only get called in the chain below if getUser sends a success.
 function getFollowers(username) {
-  return new Task((sendFail, sendSuccess) => {
+  return TaskMaker((sendFail, sendSuccess) => {
     // AJAX request using username
     success([followers]);
   });
@@ -85,7 +85,7 @@ Cancellation functions are great if you have a need to cancel an async action th
 
 ```javascript
 function requestData() {
-  return new Ask((sendFail, sendSuccess) => {
+  return TaskMaker((sendFail, sendSuccess) => {
     const request = new XMLHttpRequest();
     request.onreadystatechange = function() {
       if (request.readyState === XMLHttpRequest.DONE) {
@@ -136,7 +136,7 @@ A promise-like feature that allows you to hang on to values already processed wi
 
 ```javascript
 var count = 0;
-const task = new Task((sendFail, sendSuccess) => {
+const task = TaskMaker((sendFail, sendSuccess) => {
   const id = setTimeout(() => {
     sendSuccess(++count);
   }, 1000);
@@ -169,7 +169,7 @@ Parallelize multiple Tasks. Returns an array of successes. If one of the Tasks s
 var count = 0;
 function createTask(to) {
   var order = ++count;
-  return new Task(sendFail, sendSuccess => {
+  return TaskMaker(sendFail, sendSuccess => {
     var id = setTimeout(() => {
       sendSuccess(order);
     }, to);
@@ -179,7 +179,7 @@ function createTask(to) {
   });
 }
 
-Task.all([
+TaskMaker.all([
   createTask(100),
   createTask(500),
   createTask(0)
