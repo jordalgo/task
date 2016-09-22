@@ -1,5 +1,5 @@
 const assert = require('assert');
-const Task = require('../lib');
+const TaskMaker = require('../lib');
 
 const add1 = function(x) { return x + 1; };
 const noop = () => {};
@@ -8,7 +8,7 @@ describe('Task', () => {
   describe('basic', () => {
     it('only runs the computation when run is called', (done) => {
       let compCalled;
-      const askMe = new Task((sendFail, sendSuccess) => {
+      const askMe = TaskMaker((sendFail, sendSuccess) => {
         setTimeout(() => {
           compCalled = true;
           sendSuccess(1);
@@ -23,7 +23,7 @@ describe('Task', () => {
     });
 
     it('does not catch errors', (done) => {
-      const askMe = new Task((sendFail, sendSuccess) => {
+      const askMe = TaskMaker((sendFail, sendSuccess) => {
         setTimeout(() => {
           try {
             sendSuccess('boom');
@@ -47,7 +47,7 @@ describe('Task', () => {
     });
 
     it('does not allow a computation to complete twice', (done) => {
-      const askMe = new Task((sendFail, sendSuccess) => {
+      const askMe = TaskMaker((sendFail, sendSuccess) => {
         sendSuccess(1);
         setTimeout(() => {
           sendFail('boom');
@@ -70,7 +70,7 @@ describe('Task', () => {
 
     it('run returns a cancellation function', (done) => {
       let compCalled;
-      const askMe = new Task((sendFail, sendSuccess) => {
+      const askMe = TaskMaker((sendFail, sendSuccess) => {
         const to = setTimeout(() => {
           compCalled = true;
           sendSuccess(1);
@@ -90,7 +90,7 @@ describe('Task', () => {
     });
 
     it('wont fail or succeed if canceled before', (done) => {
-      const askMe = new Task((sendFail) => {
+      const askMe = TaskMaker((sendFail) => {
         setTimeout(() => {
           sendFail('boom');
         }, 50);
@@ -115,7 +115,7 @@ describe('Task', () => {
 
   describe('map', () => {
     it('maps', (done) => {
-      const askMe = new Task((sendFail, sendSuccess) => {
+      const askMe = TaskMaker((sendFail, sendSuccess) => {
         sendSuccess(1);
       });
 
@@ -128,7 +128,7 @@ describe('Task', () => {
     });
 
     it('does not map fails', (done) => {
-      const askMe = new Task((sendFail) => {
+      const askMe = TaskMaker((sendFail) => {
         sendFail('boom');
       });
 
@@ -145,7 +145,7 @@ describe('Task', () => {
 
     it('run returns the original cancel', (done) => {
       let compCalled;
-      const askMe = new Task((sendFail, sendSuccess) => {
+      const askMe = TaskMaker((sendFail, sendSuccess) => {
         const to = setTimeout(() => {
           compCalled = true;
           sendSuccess(1);
@@ -167,11 +167,11 @@ describe('Task', () => {
     });
 
     it('is exposed as a static function', (done) => {
-      const askMe = new Task((sendFail, sendSuccess) => {
+      const askMe = TaskMaker((sendFail, sendSuccess) => {
         sendSuccess(1);
       });
 
-      Task
+      TaskMaker
       .map(add1, askMe)
       .run(noop, success => {
         assert.equal(success, 2);
@@ -182,18 +182,18 @@ describe('Task', () => {
 
   describe('bichain', () => {
     it('chains for both fail and success', (done) => {
-      const askMe = new Task((sendFail) => {
+      const askMe = TaskMaker((sendFail) => {
         sendFail(2);
       });
 
       function askAddfail(l) {
-        return new Task((sendFail) => {
+        return TaskMaker((sendFail) => {
           sendFail(l - 1);
         });
       }
 
       function askAddsuccess(r) {
-        return new Task((sendFail, sendSuccess) => {
+        return TaskMaker((sendFail, sendSuccess) => {
           sendSuccess(r + 10);
         });
       }
@@ -214,7 +214,7 @@ describe('Task', () => {
     it('will recursively cancel', (done) => {
       let firstTaskComplete;
       let secondTaskCanceled;
-      const askMe = new Task((sendFail) => {
+      const askMe = TaskMaker((sendFail) => {
         setTimeout(() => {
           firstTaskComplete = true;
           sendFail(1);
@@ -222,7 +222,7 @@ describe('Task', () => {
       });
 
       function askAdd(l) {
-        return new Task((sendFail, sendSuccess) => {
+        return TaskMaker((sendFail, sendSuccess) => {
           const id = setTimeout(() => {
             sendSuccess(l + 5);
           }, 100);
@@ -251,23 +251,23 @@ describe('Task', () => {
     });
 
     it('is exposed as a static factory', (done) => {
-      const askMe = new Task((sendFail) => {
+      const askMe = TaskMaker((sendFail) => {
         sendFail(2);
       });
 
       function askAddfail(l) {
-        return new Task((sendFail) => {
+        return TaskMaker((sendFail) => {
           sendFail(l - 1);
         });
       }
 
       function askAddsuccess(r) {
-        return new Task((sendFail, sendSuccess) => {
+        return TaskMaker((sendFail, sendSuccess) => {
           sendSuccess(r + 10);
         });
       }
 
-      Task
+      TaskMaker
       .bichain(askAddfail, askAddsuccess, askMe)
       .run(
         l => {
@@ -283,12 +283,12 @@ describe('Task', () => {
 
   describe('chain', () => {
     it('chains', (done) => {
-      const askMe = new Task((sendFail, sendSuccess) => {
+      const askMe = TaskMaker((sendFail, sendSuccess) => {
         sendSuccess(1);
       });
 
       function askAdd(r) {
-        return new Task((sendFail, sendSuccess) => {
+        return TaskMaker((sendFail, sendSuccess) => {
           sendSuccess(r + 5);
         });
       }
@@ -303,13 +303,13 @@ describe('Task', () => {
 
     it('does not call the chaining ask on fail', (done) => {
       let askAddCalled;
-      const askMe = new Task((sendFail) => {
+      const askMe = TaskMaker((sendFail) => {
         sendFail('boom');
       });
 
       function askAdd(r) {
         askAddCalled = true;
-        return new Task((sendFail, sendSuccess) => {
+        return TaskMaker((sendFail, sendSuccess) => {
           sendSuccess(r + 5);
         });
       }
@@ -331,7 +331,7 @@ describe('Task', () => {
     it('will recursively cancel', (done) => {
       let firstTaskComplete;
       let secondTaskCanceled;
-      const askMe = new Task((sendFail, sendSuccess) => {
+      const askMe = TaskMaker((sendFail, sendSuccess) => {
         setTimeout(() => {
           firstTaskComplete = true;
           sendSuccess(1);
@@ -339,7 +339,7 @@ describe('Task', () => {
       });
 
       function askAdd(r) {
-        return new Task((sendFail, sendSuccess) => {
+        return TaskMaker((sendFail, sendSuccess) => {
           const id = setTimeout(() => {
             sendSuccess(r + 5);
           }, 100);
@@ -368,17 +368,17 @@ describe('Task', () => {
     });
 
     it('is exposed as a static function', (done) => {
-      const askMe = new Task((sendFail, sendSuccess) => {
+      const askMe = TaskMaker((sendFail, sendSuccess) => {
         sendSuccess(1);
       });
 
       function askAdd(r) {
-        return new Task((sendFail, sendSuccess) => {
+        return TaskMaker((sendFail, sendSuccess) => {
           sendSuccess(r + 5);
         });
       }
 
-      Task
+      TaskMaker
       .chain(askAdd, askMe)
       .run(noop, success => {
         assert.equal(success, 6);
@@ -389,13 +389,13 @@ describe('Task', () => {
 
   describe('ap', () => {
     it('applies first success to passed asks right', (done) => {
-      const askMe = new Task((sendFail, sendSuccess) => {
+      const askMe = TaskMaker((sendFail, sendSuccess) => {
         setTimeout(() => {
           sendSuccess(add1);
         }, 10);
       });
 
-      const askYou = new Task((sendFail, sendSuccess) => {
+      const askYou = TaskMaker((sendFail, sendSuccess) => {
         sendSuccess(5);
       });
 
@@ -408,17 +408,17 @@ describe('Task', () => {
     });
 
     it('is exposed as a static function', (done) => {
-      const askMe = new Task((sendFail, sendSuccess) => {
+      const askMe = TaskMaker((sendFail, sendSuccess) => {
         setTimeout(() => {
           sendSuccess(add1);
         }, 10);
       });
 
-      const askYou = new Task((sendFail, sendSuccess) => {
+      const askYou = TaskMaker((sendFail, sendSuccess) => {
         sendSuccess(5);
       });
 
-      Task
+      TaskMaker
       .ap(askYou, askMe)
       .run(noop, success => {
         assert.equal(success, 6);
@@ -430,7 +430,7 @@ describe('Task', () => {
   describe('concat', () => {
     it('returns the first ask that completes', (done) => {
       function createTask(to, r) {
-        return new Task((sendFail, sendSuccess) => {
+        return TaskMaker((sendFail, sendSuccess) => {
           const id = setTimeout(() => {
             sendSuccess(r);
           }, to);
@@ -451,7 +451,7 @@ describe('Task', () => {
     it('run returns a function that can cancel both', (done) => {
       let cancelCalled = 0;
       function createTask(to, r) {
-        return new Task((sendFail, sendSuccess) => {
+        return TaskMaker((sendFail, sendSuccess) => {
           const id = setTimeout(() => {
             sendSuccess(r);
           }, to);
@@ -478,7 +478,7 @@ describe('Task', () => {
 
     it('is exposed as a static function', (done) => {
       function createTask(to, r) {
-        return new Task((sendFail, sendSuccess) => {
+        return TaskMaker((sendFail, sendSuccess) => {
           const id = setTimeout(() => {
             sendSuccess(r);
           }, to);
@@ -488,7 +488,7 @@ describe('Task', () => {
         });
       }
 
-      Task
+      TaskMaker
       .concat(createTask(50, 3), createTask(100, 5))
       .run(noop, success => {
         assert.equal(success, 3);
@@ -500,7 +500,7 @@ describe('Task', () => {
   describe('cache', () => {
     it('run returns the original value and does not re-run computation', (done) => {
       let called = 0;
-      const askMe = new Task((sendFail, sendSuccess) => {
+      const askMe = TaskMaker((sendFail, sendSuccess) => {
         sendSuccess(1);
         called++;
       });
@@ -528,7 +528,7 @@ describe('Task', () => {
     it('notifies each run observer if the computation has not completed', (done) => {
       let called = 0;
       let runCalled = 0;
-      const askMe = new Task((sendFail, sendSuccess) => {
+      const askMe = TaskMaker((sendFail, sendSuccess) => {
         setTimeout(() => {
           sendSuccess(1);
         }, 100);
@@ -552,12 +552,12 @@ describe('Task', () => {
 
     it('is exposed as a static function', (done) => {
       let called = 0;
-      const askMe = new Task((sendFail, sendSuccess) => {
+      const askMe = TaskMaker((sendFail, sendSuccess) => {
         sendSuccess(1);
         called++;
       });
 
-      const askMeMemo = Task.cache(askMe);
+      const askMeMemo = TaskMaker.cache(askMe);
 
       askMeMemo.run(noop, success => {
         assert.equal(success, 1);
@@ -581,7 +581,7 @@ describe('Task', () => {
   describe('after', () => {
     it('sends a success after x milliseconds', (done) => {
       let waited;
-      Task.after(100, 'hello')
+      TaskMaker.after(100, 'hello')
       .run(() => {
         assert.fail('fail called');
       },
@@ -596,7 +596,7 @@ describe('Task', () => {
 
   describe('callback', () => {
     it('runs the computation and passes fail as the first arg', () => {
-      Task.fail('boom')
+      TaskMaker.fail('boom')
       .callback((fail, success) => {
         assert.equal(fail, 'boom');
         assert.ok(!success);
@@ -604,7 +604,7 @@ describe('Task', () => {
     });
 
     it('runs the computation and passes success as the second arg', () => {
-      Task.of('hello')
+      TaskMaker.of('hello')
       .callback((fail, success) => {
         assert.ok(!fail);
         assert.equal(success, 'hello');
@@ -617,14 +617,14 @@ describe('Task', () => {
       let count = 0;
       function createTask(to) {
         const order = ++count;
-        return new Task((sendFail, sendSuccess) => {
+        return TaskMaker((sendFail, sendSuccess) => {
           setTimeout(() => {
             sendSuccess(order);
           }, to);
         });
       }
 
-      Task.all([
+      TaskMaker.all([
         createTask(100),
         createTask(500),
         createTask(0),
@@ -637,7 +637,7 @@ describe('Task', () => {
 
     it('sends the first fail and cancels other asks if a left occurs', (done) => {
       function createTask(to, l) {
-        return new Task((sendFail) => {
+        return TaskMaker((sendFail) => {
           const id = setTimeout(() => {
             if (!l) {
               assert.sendFail('Should have been canceled');
@@ -651,7 +651,7 @@ describe('Task', () => {
         });
       }
 
-      Task.all([
+      TaskMaker.all([
         createTask(100),
         createTask(500),
         createTask(0, 'boom'),
@@ -668,7 +668,7 @@ describe('Task', () => {
 
     it('wont throw even if proper cancel functions not returned', (done) => {
       function createTask(to, l) {
-        return new Task((sendFail, sendSuccess) => {
+        return TaskMaker((sendFail, sendSuccess) => {
           setTimeout(() => {
             if (!l) {
               sendSuccess('uh oh');
@@ -681,7 +681,7 @@ describe('Task', () => {
 
       let callCount = 0;
 
-      Task.all([
+      TaskMaker.all([
         createTask(100, 'boom'),
         createTask(500),
         createTask(0),
