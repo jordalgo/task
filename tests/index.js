@@ -578,6 +578,22 @@ describe('Task', () => {
     });
   });
 
+  describe('after', () => {
+    it('sends a success after x milliseconds', (done) => {
+      let waited;
+      Task.after(100, 'hello')
+      .run(() => {
+        assert.fail('fail called');
+      },
+      (success) => {
+        waited = true;
+        assert.equal(success, 'hello');
+        done();
+      });
+      assert.ok(!waited);
+    });
+  });
+
   describe('all', () => {
     it('does not notify until all Tasks are completed', (done) => {
       let count = 0;
