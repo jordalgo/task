@@ -612,6 +612,36 @@ describe('Task', () => {
     });
   });
 
+  describe('orElse', () => {
+    it('forwards the success value', () => {
+      TaskMaker.of('hello')
+      .orElse('bye')
+      .run(
+        () => { assert.fail('fail called'); },
+        success => { assert.equal(success, 'hello'); }
+      );
+    });
+
+    it('forwards the else value on fail', () => {
+      TaskMaker.fail('boom')
+      .orElse('bye')
+      .run(
+        () => { assert.fail('fail called'); },
+        success => { assert.equal(success, 'bye'); }
+      );
+    });
+
+    it('is exposed as a static function', () => {
+      const failure = TaskMaker.fail('boom');
+
+      TaskMaker.orElse('bye', failure)
+      .run(
+        () => { assert.fail('fail called'); },
+          success => { assert.equal(success, 'bye'); }
+      );
+    });
+  });
+
   describe('all', () => {
     it('does not notify until all Tasks are completed', (done) => {
       let count = 0;

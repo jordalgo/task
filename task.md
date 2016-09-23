@@ -18,6 +18,17 @@ _Signature_: ((a → b) → c → void) → Task[a, b]
 -   `unSafe` **[Boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean)** (private)
 -   `safe`  
 
+## run
+
+Run the computation originally passed when creating the Task.
+
+**Parameters**
+
+-   `sendFail` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
+-   `sendSuccess` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
+
+Returns **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** cancellation
+
 ## map
 
 Transforms the success value of the `Task[_, a]` using a regular unary
@@ -166,13 +177,58 @@ _Signature_: Void → Task[_, _]
 
 Returns **[Task](#task)** 
 
+## fork
+
+Alias for `run`.
+
+## callback
+
+Callback style run which passes fail and success
+as the first and second arguments.
+Use of this function is not advised as fail values are allowed to be null
+though you probably shouldn't be indicating a fail with null :)
+
+_Signature_: (a, b) → (\_ → void)
+
+**Parameters**
+
+-   `callback` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
+
+Returns **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** cancel
+
+## orElse
+
+Creates a task that sends a success if it receives a fail
+and passes on the value if it receives a success.
+
+_Signature_: a → Task[_, a]
+
+**Parameters**
+
+-   `else` **Any** 
+-   `elseValue`  
+
+Returns **[Task](#task)** 
+
 # TaskMaker
 
-Exported Factory function for Tasks
+Exported Factory function for Tasks.
+Also includes many utility methods.
 
 **Parameters**
 
 -   `computation` **[Function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function)** 
+
+Returns **[Task](#task)** 
+
+## after
+
+Creates a Task that sends a success after x milliseconds
+
+**Parameters**
+
+-   `ms` **[Number](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number)** 
+-   `success` **Any** 
 
 Returns **[Task](#task)** 
 
