@@ -12,7 +12,7 @@ describe('Task', () => {
         setTimeout(() => {
           compCalled = true;
           sendSuccess(1);
-        }, 100);
+        }, 0);
       });
 
       assert.ok(!compCalled);
@@ -51,7 +51,7 @@ describe('Task', () => {
         sendSuccess(1);
         setTimeout(() => {
           sendFail('boom');
-        }, 100);
+        }, 0);
       });
 
       askMe.run(
@@ -65,7 +65,7 @@ describe('Task', () => {
 
       setTimeout(() => {
         done();
-      }, 150);
+      }, 50);
     });
 
     it('run returns a cancellation function', (done) => {
@@ -74,7 +74,7 @@ describe('Task', () => {
         const to = setTimeout(() => {
           compCalled = true;
           sendSuccess(1);
-        }, 500);
+        }, 0);
         return () => { clearTimeout(to); };
       });
 
@@ -86,14 +86,14 @@ describe('Task', () => {
       setTimeout(() => {
         assert.ok(!compCalled);
         done();
-      }, 100);
+      }, 50);
     });
 
     it('wont fail or succeed if canceled before', (done) => {
       const askMe = TaskMaker((sendFail) => {
         setTimeout(() => {
           sendFail('boom');
-        }, 50);
+        }, 0);
       });
 
       const cancel = askMe.run(
@@ -109,7 +109,7 @@ describe('Task', () => {
 
       setTimeout(() => {
         done();
-      }, 100);
+      }, 50);
     });
   });
 
@@ -149,7 +149,7 @@ describe('Task', () => {
         const to = setTimeout(() => {
           compCalled = true;
           sendSuccess(1);
-        }, 100);
+        }, 0);
         return () => { clearTimeout(to); };
       });
 
@@ -163,7 +163,7 @@ describe('Task', () => {
       setTimeout(() => {
         assert.ok(!compCalled);
         done();
-      }, 150);
+      }, 50);
     });
 
     it('is exposed as a static function', (done) => {
@@ -522,7 +522,7 @@ describe('Task', () => {
         });
         // make sure the second run is also always async
         assert.ok(!secondCall);
-      }, 100);
+      }, 50);
     });
 
     it('notifies each run observer if the computation has not completed', (done) => {
@@ -531,7 +531,7 @@ describe('Task', () => {
       const askMe = TaskMaker((sendFail, sendSuccess) => {
         setTimeout(() => {
           sendSuccess(1);
-        }, 100);
+        }, 0);
         called++;
       });
 
@@ -574,14 +574,14 @@ describe('Task', () => {
         });
         // make sure the second run is also always async
         assert.ok(!secondCall);
-      }, 100);
+      }, 0);
     });
   });
 
   describe('after', () => {
     it('sends a success after x milliseconds', (done) => {
       let waited;
-      TaskMaker.after(100, 'hello')
+      TaskMaker.after(50, 'hello')
       .run(() => {
         assert.fail('fail called');
       },
@@ -633,7 +633,6 @@ describe('Task', () => {
 
     it('is exposed as a static function', () => {
       const failure = TaskMaker.fail('boom');
-
       TaskMaker.orElse('bye', failure)
       .run(
         () => { assert.fail('fail called'); },
@@ -682,8 +681,8 @@ describe('Task', () => {
       }
 
       TaskMaker.all([
-        createTask(100),
-        createTask(500),
+        createTask(50),
+        createTask(51),
         createTask(0, 'boom'),
       ]).run(
         fail => {
@@ -712,8 +711,8 @@ describe('Task', () => {
       let callCount = 0;
 
       TaskMaker.all([
-        createTask(100, 'boom'),
-        createTask(500),
+        createTask(50, 'boom'),
+        createTask(70),
         createTask(0),
       ]).run(
         fail => {
@@ -728,7 +727,7 @@ describe('Task', () => {
       setTimeout(() => {
         assert.equal(callCount, 1);
         done();
-      }, 600);
+      }, 100);
     });
   });
 });
