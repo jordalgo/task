@@ -1,5 +1,5 @@
 {
-  "name": "jordalgo-task",
+  "name": "j-task",
   "version": "0.1.0",
   "description": "A javascript monad for dealing with async tasks",
   "main": "lib/index.js",

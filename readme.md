@@ -1,10 +1,10 @@
-# Task
+# Task (J-Task)
 
-A javascript data type for async requests. Similar to [data.task](https://github.com/folktale/data.task), [fun-task](https://github.com/rpominov/fun-task), and [flutures](https://github.com/Avaq/Fluture) with some modifications. Published on NPM as "jordalgo-task"
+A javascript data type for async requests. Similar to [data.task](https://github.com/folktale/data.task), [fun-task](https://github.com/rpominov/fun-task), and [flutures](https://github.com/Avaq/Fluture) with some modifications. Published on NPM as "j-task"
 
 ## Installing
 ```
-npm install jordalgo-task
+npm install j-task
 ```
 
 ## Quick Details
@@ -221,4 +221,4 @@ Data.task, fun-task, and this Task are pretty similar and should be fairly inter
 
 <a name="credits"></a>
 ## Credits
-A lot of code was inspired and stolen directly from [data.task](https://github.com/folktale/data.task) (Quildreen Motta) and [fun-task](https://github.com/rpominov/fun-task) (Roman Pominov).
+A lot of code was inspired and stolen directly from [flutures](https://github.com/Avaq/Fluture), [data.task](https://github.com/folktale/data.task), and [fun-task](https://github.com/rpominov/fun-task),
